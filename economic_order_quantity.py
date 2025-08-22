@@ -6,28 +6,44 @@ class Economic_Order_Quantity:
     Economic Order Quantity (EOQ) and Reorder Point (ROP).
     """
     def __init__(
+            
         self,
-        annual_demand: float,
-        order_cost: float,
-        holding_cost: float,
-    ):
-        """
-        Initializes the Economic_Order_Quantity calculator.
+        demand_rate,             # annual or period demand (D)
+        ordering_cost,      # setup cost (S)
+        holding_cost,       # holding cost per unit per year (H)
+        production_rate=None,  # (P) parameter if the model is EPQ
+        shortage_cost=None,    # penalty cost if shortages allowed
+        discount_scheme=None,  # dict or list for quantity discounts
+        lead_time=0,           # reorder point calc
 
-        Args:
-            annual_demand: The total annual demand for the product.
-            order_cost: The cost to place a single order.
-            holding_cost: The cost to hold one unit of inventory for a year.
+                 ):
         """
-        if annual_demand < 0 or order_cost < 0 or holding_cost < 0:
-            raise ValueError("Inputs cannot be negative.")
-        self.annual_demand = annual_demand
-        self.order_cost = order_cost
+        Initializes a EOQ model.
+        Can represent various inventory management scenarios.
+
+        Core Parameters:
+        * demand_rate (float): Annual or period demand for the product.
+        * ordering_cost (float): Cost of placing one order.
+        * holding_cost (float): Annual holding cost per unit.
+
+        Optional Parameters (for EOQ variations):
+        * production_rate (float): Production rate if using EPQ model.
+        * shortage_cost (float): Cost per unit of backordering or stockout.
+        * discount_scheme (dict/list): Quantity discount structure.
+        * lead_time (float): Lead time for reorder point calculation.
+
+        Stores all input parameters in `self.params` for easy reference and further calculations.
+
+        """
+        self.params = locals()
+        self.demand_rate = demand_rate
+        self.ordering_cost = ordering_cost
         self.holding_cost = holding_cost
 
     def calculate_eoq(self) -> float:
         """
         Calculates the Economic Order Quantity (EOQ).
+
         EOQ is the ideal order quantity to minimize inventory costs.
 
         Returns:
@@ -36,7 +52,7 @@ class Economic_Order_Quantity:
         if self.holding_cost == 0:
             return float('inf')
         
-        return math.sqrt((2 * self.annual_demand * self.order_cost) / self.holding_cost)
+        return math.sqrt((2 * self.demand_rate * self.ordering_cost) / self.holding_cost)
 
     def calculate_reorder_point(
         self,
@@ -46,10 +62,13 @@ class Economic_Order_Quantity:
     ) -> float:
         """
         Calculates the Reorder Point (ROP).
+
         ROP is the inventory level at which a new order should be placed.
 
         The formula used is:
+        
         ROP = (Daily Demand * Lead Time) + Safety Stock
+        
         where Daily Demand = Annual Demand / Days of Operation.
 
         Args:
@@ -65,17 +84,21 @@ class Economic_Order_Quantity:
         if days_of_operation <= 0:
             raise ValueError("Days of operation must be a positive number.")
 
-        daily_demand = self.annual_demand / days_of_operation
+        daily_demand = self.demand_rate / days_of_operation
         reorder_point = (daily_demand * lead_time) + safety_stock
         return reorder_point
 
 if __name__ == "__main__":
     # --- Example Usage ---
     inventory_system = Economic_Order_Quantity(
-        annual_demand=1000,   # 1000 units per year
-        order_cost=50,        # $50 per order
+        demand_rate=1000,   # 1000 units per year
+        ordering_cost=50,        # $50 per order
         holding_cost=2.5      # $2.50 per unit per year
     )
+
+    print(f"Demand is {inventory_system.demand_rate} units per year")
+    print(f"Ordering cost is {inventory_system.ordering_cost}")
+    print(f"Holding cost is {inventory_system.holding_cost}")
 
     # 1. Calculate Economic Order Quantity
     eoq = inventory_system.calculate_eoq()
@@ -86,10 +109,10 @@ if __name__ == "__main__":
         lead_time=7,          # 7-day lead time
         safety_stock=20       # 20 units of safety stock
     )
-    print(f"Reorder Point (ROP): {reorder_point:.2f} units")
+    print(f"Reorder Point (ROP): {reorder_point:.2f} days")
 
     # 3. Calculate Reorder Point based on business days (e.g., 252)
     reorder_point_biz_days = inventory_system.calculate_reorder_point(
         lead_time=7, safety_stock=20, days_of_operation=252
     )
-    print(f"Reorder Point (ROP) for business days: {reorder_point_biz_days:.2f} units")
+    print(f"Reorder Point (ROP) for business days: {reorder_point_biz_days:.2f} days")
