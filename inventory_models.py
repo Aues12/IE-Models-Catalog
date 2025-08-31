@@ -308,6 +308,10 @@ class Discount_EOQ(Basic_EOQ):
                                                     }
 
 class Backorder_EOQ(Basic_EOQ):
+    """A class to represent the Economic Order Quantity (EOQ) model with planned shortages (backordering).
+    
+    Takes shortage cost into account."""
+
     def __init__(
             self, 
             price, 
@@ -329,19 +333,25 @@ class Backorder_EOQ(Basic_EOQ):
             raise ValueError("shortage_cost must be positive.")
         
         self.shortage_cost = shortage_cost  # P: shortage/backorder cost per unit per year
-
+    
     def calculate_eoq(self, analysis_mode=False):
-        """EOQ with planned shortages (backordering); returns Q*."""
+        """Calculates EOQ with planned shortages (backordering)
+        
+        Returns Q*."""
 
         D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
         Q_opt = math.sqrt((2 * D * S * (H + P)) / (H * P))
-        if analysis_mode:
-            print(f"Q*={Q_opt}")
 
         return Q_opt
 
     def calculate_cycle_metrics(self):
-        """Return Q*, S_max (max inventory), B_max (max backorder), and annual total cost."""
+        """Returns:
+            
+            * Optimal quantity Q*, 
+            * Max inventory (S_max), 
+            * Max backorder (B_max), 
+            * and Annual Total Cost."""
+        
         D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
         Q = self.calculate_eoq()
         S_max = (P / (H + P)) * Q
