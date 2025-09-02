@@ -14,4 +14,4 @@ In such a project, **clean code/documentation writing** and **simple user interf
 
 I have seen a need to easily reach IE models, when I was doing my internship at a spare parts trading company. Whether it is a business environment or a research environment, easily accessing pre-programmed versions of these **mathematical models** would provide great benefits in terms of time and productivity.
 
-The ideal way to start such a project would be starting from **basic** and **simpler** models, then to advance into more **complex** models with more **advanced features** and parameters. Therefore, we will build various EOQ Models based on the ````Basic_EOQ```` superclass.
+The ideal way to start such a project would be starting from **basic** and **simpler** models, then to advance into more **complex** models with more **advanced features** and parameters. Therefore, we will build various EOQ Models based on the ````BasicEOQ```` superclass.
