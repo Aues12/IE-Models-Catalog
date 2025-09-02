@@ -1,6 +1,6 @@
 import math
 
-class Basic_EOQ:
+class BasicEOQ:
     """
     A class to represent the Economic Order Quantity (EOQ) model.
     Basic version of the EOQ Model.
@@ -112,7 +112,7 @@ class Basic_EOQ:
             return reorder_point
         
 
-class EPQ(Basic_EOQ):
+class EPQ(BasicEOQ):
     """
     A class to represent the Economic Production Quantity (EPQ) model.
 
@@ -182,7 +182,7 @@ class EPQ(Basic_EOQ):
         return epq
 
 
-class Discount_EOQ(Basic_EOQ):
+class DiscountEOQ(BasicEOQ):
     
     """
     A class to represent the Economic Order Quantity (EOQ) model with quantity discounts.
@@ -307,7 +307,7 @@ class Discount_EOQ(Basic_EOQ):
                 "unit_price": best_unit_price
                                                     }
 
-class Backorder_EOQ(Basic_EOQ):
+class BackorderEOQ(BasicEOQ):
     """A class to represent the Economic Order Quantity (EOQ) model with planned shortages (backordering).
     
     Takes shortage cost into account."""
@@ -322,7 +322,7 @@ class Backorder_EOQ(Basic_EOQ):
             lead_time=None
             ):
         
-        # Inherits from Basic_EOQ
+        # Inherits from BasicEOQ
         super().__init__(price, 
                          demand_rate, 
                          ordering_cost, 
