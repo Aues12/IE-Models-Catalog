@@ -1,0 +1,17 @@
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+
+# Build outputs
+build/
+dist/
+
+# Editor directories
+.vscode/
+.idea/
