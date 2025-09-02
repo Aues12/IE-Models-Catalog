@@ -12,7 +12,7 @@ class Basic_EOQ:
         demand_rate: float,     # annual or period demand (D)
         ordering_cost: float,   # setup cost (S)
         holding_rate: float = 0.25, # holding cost percentage
-        lead_time: float = None     # lead time parameter (L)
+        lead_time = None            # lead time parameter (L)
     ):
         """
         Initializes a EOQ model.
@@ -26,7 +26,7 @@ class Basic_EOQ:
         * lead_time (float): Lead time for reorder point calculation.
 
         """
-        # Parametreleri burada kontrol et
+        # Check parameter boundaries
         if demand_rate <= 0 or ordering_cost < 0 or price <= 0 or holding_rate <= 0:
             raise ValueError("All core parameters (demand_rate, price, holding_rate, ordering_cost) must be positive.")
         
@@ -78,7 +78,7 @@ class Basic_EOQ:
         lead_time,
         safety_stock: float = 0,
         days_of_operation: int = 365,
-                                ) -> float:
+                                ):
         """
         Calculates the Reorder Point (ROP).
 
@@ -125,7 +125,7 @@ class EPQ(Basic_EOQ):
                 ordering_cost: float,   # setup cost (S)
                 production_rate: float,   # production rate parameter (P)
                 holding_rate: float = 0.25,     # holding cost percentage
-                lead_time: float = None
+                lead_time = None
                 ):
         
         # Calls - Basic EOQ - parent class
@@ -195,8 +195,8 @@ class Discount_EOQ(Basic_EOQ):
                  demand_rate: float,     # annual or period demand (D)
                  ordering_cost: float,   # setup cost (S)
                  holding_rate: float = 0.25,       # holding cost percentage
-                 lead_time: float = None,        # lead time parameter (L)
-                 discount_rates: dict = None       # discount rates as a dictionary {min_quantity: discount_rate}
+                 lead_time = None,           # lead time parameter (L)
+                 discount_rates = None       # discount rates as a dictionary {min_quantity: discount_rate}
                  ):
         
         super().__init__(
@@ -305,4 +305,56 @@ class Discount_EOQ(Basic_EOQ):
                 "best_quantity": best_order_quantity,
                 "min_total_cost": min_total_cost,
                 "unit_price": best_unit_price
-                                                 }
+                                                    }
+
+class Backorder_EOQ(Basic_EOQ):
+    """A class to represent the Economic Order Quantity (EOQ) model with planned shortages (backordering).
+    
+    Takes shortage cost into account."""
+
+    def __init__(
+            self, 
+            price, 
+            demand_rate, 
+            ordering_cost, 
+            shortage_cost, 
+            holding_rate=0.25, 
+            lead_time=None
+            ):
+        
+        # Inherits from Basic_EOQ
+        super().__init__(price, 
+                         demand_rate, 
+                         ordering_cost, 
+                         holding_rate, 
+                         lead_time)
+        
+        if shortage_cost <= 0:
+            raise ValueError("shortage_cost must be positive.")
+        
+        self.shortage_cost = shortage_cost  # P: shortage/backorder cost per unit per year
+    
+    def calculate_eoq(self, analysis_mode=False):
+        """Calculates EOQ with planned shortages (backordering)
+        
+        Returns Q*."""
+
+        D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
+        Q_opt = math.sqrt((2 * D * S * (H + P)) / (H * P))
+
+        return Q_opt
+
+    def calculate_cycle_metrics(self):
+        """Returns:
+            
+            * Optimal quantity Q*, 
+            * Max inventory (S_max), 
+            * Max backorder (B_max), 
+            * and Annual Total Cost."""
+        
+        D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
+        Q = self.calculate_eoq()
+        S_max = (P / (H + P)) * Q
+        B_max = (H / (H + P)) * Q
+        total_cost = (D * S / Q) + (H * S_max**2 / (2 * Q)) + (P * B_max**2 / (2 * Q))
+        return {"Q_opt": Q, "S_max": S_max, "B_max": B_max, "TotalCost": total_cost}
