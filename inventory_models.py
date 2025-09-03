@@ -136,6 +136,12 @@ class EPQ(BasicEOQ):
             lead_time=lead_time
                         )
         
+        if production_rate <= 0:
+            raise ValueError("Production rate must be positive.")
+        if production_rate <= demand_rate:
+            raise ValueError("Production rate must be greater than demand rate.")
+        
+
         self.production_rate = production_rate
     
     def calculate_eoq(self, analysis_mode: bool = False):
