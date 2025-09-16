@@ -280,7 +280,8 @@ class DiscountEOQ(BasicEOQ):
         best_unit_price = None
 
         quantity_breaks = [d[0] for d in self.sorted_discounts]
-        print("Quantity Breaks: ", quantity_breaks)
+        if analysis_mode:
+            print("Quantity Breaks: ", quantity_breaks)
 
         # Iterate through each discount tier
         for i in range(len(self.sorted_discounts)):
@@ -478,3 +479,4 @@ class BackorderEOQ(BasicEOQ):
             
             return reorder_point
     
+
