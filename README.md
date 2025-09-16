@@ -18,5 +18,29 @@ The ideal way to start such a project would be starting from **basic** and **sim
 
 Documentation for Inventory Models can be found in this [notion page](https://understood-key-c19.notion.site/ebd/25fa928f126d804080baf9c1c5704332).
 
+The catalog is designed to grow from these fundamentals into more advanced scenarios—extending the software architecture with each addition to keep the codebase maintainable.
+
+## Quick Start
+
+The `BasicEOQ` class implements the classic Economic Order Quantity model. Instantiate it with your demand, cost, and holding parameters, then call the helper methods to calculate optimal order size and reorder point.
+
+```python
+from inventory_models import BasicEOQ
+
+model = BasicEOQ(
+    price=50.0,
+    demand_rate=1200,
+    ordering_cost=75,
+    holding_rate=0.20,
+)
+
+eoq = model.calculate_eoq()
+reorder_point = model.calculate_reorder_point(lead_time=10, safety_stock=20)
+
+print(f"Optimal order quantity: {eoq:.2f} units")
+print(f"Reorder point: {reorder_point:.0f} units")
+```
+
+The example prints the optimal batch size for replenishment and the stock level that should trigger a new order, illustrating how the catalog’s classes can be embedded in larger applications or notebooks.
 
 
