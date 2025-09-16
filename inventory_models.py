@@ -419,7 +419,7 @@ class BackorderEOQ(BasicEOQ):
     def calculate_eoq(self, analysis_mode=False):
         """Calculates EOQ with planned shortages (backordering)
         
-        Returns Q*."""
+        Returns Economical Order Quantiity (Q*)."""
 
         D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
         Q_opt = math.sqrt((2 * D * S * (H + P)) / (H * P))
@@ -479,4 +479,5 @@ class BackorderEOQ(BasicEOQ):
             
             return reorder_point
     
+
 
