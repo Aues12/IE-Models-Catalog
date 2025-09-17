@@ -271,7 +271,7 @@ class DiscountEOQ(BasicEOQ):
         holding_cost_component = (quantity / 2) * (price * self.holding_rate)
         return purchase_cost + ordering_cost_component + holding_cost_component
 
-    def calculate_eoq(self, analysis_mode=True):
+    def calculate_eoq(self, analysis_mode=False):
         """
         Calculates the optimal order quantity considering quantity discounts.
         """
