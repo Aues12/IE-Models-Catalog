@@ -110,6 +110,9 @@ class BasicEOQ:
             
             return reorder_point
         
+        elif self.lead_time is None:
+            raise ValueError("Lead time must be provided for reorder point calculation.")
+
 
 class EPQ(BasicEOQ):
     """
@@ -141,7 +144,6 @@ class EPQ(BasicEOQ):
         if production_rate <= demand_rate:
             raise ValueError("Production rate must be greater than demand rate.")
         
-
         self.production_rate = production_rate
     
     def calculate_eoq(self, analysis_mode: bool = False):
@@ -223,6 +225,9 @@ class EPQ(BasicEOQ):
             
             return reorder_point
     
+        elif self.lead_time is None:
+            raise ValueError("Lead time must be provided for reorder point calculation.")
+        
 
 class DiscountEOQ(BasicEOQ):
     
@@ -387,6 +392,9 @@ class DiscountEOQ(BasicEOQ):
             reorder_point = (daily_demand * self.lead_time) + safety_stock
             
             return reorder_point
+        
+        elif self.lead_time is None:
+            raise ValueError("Lead time must be provided for reorder point calculation.")
     
 
 class BackorderEOQ(BasicEOQ):
@@ -479,5 +487,6 @@ class BackorderEOQ(BasicEOQ):
             
             return reorder_point
     
-
+        elif self.lead_time is None:
+            raise ValueError("Lead time must be provided for reorder point calculation.")
 
