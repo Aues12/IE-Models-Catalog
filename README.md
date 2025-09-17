@@ -104,7 +104,7 @@ Algorithm logic is available in [EOQ documentation page](https://understood-key-
 
 ```python
 
-discount_model = Discount_EOQ(
+discount_model = DiscountEOQ(
             price=100,
             demand_rate=1000,     # annual demand
             ordering_cost=50,     # setup cost
