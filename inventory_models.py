@@ -271,7 +271,7 @@ class DiscountEOQ(BasicEOQ):
         holding_cost_component = (quantity / 2) * (price * self.holding_rate)
         return purchase_cost + ordering_cost_component + holding_cost_component
 
-    def calculate_eoq(self, analysis_mode=True):
+    def calculate_eoq(self, analysis_mode=False):
         """
         Calculates the optimal order quantity considering quantity discounts.
         """
@@ -280,7 +280,8 @@ class DiscountEOQ(BasicEOQ):
         best_unit_price = None
 
         quantity_breaks = [d[0] for d in self.sorted_discounts]
-        print("Quantity Breaks: ", quantity_breaks)
+        if analysis_mode:
+            print("Quantity Breaks: ", quantity_breaks)
 
         # Iterate through each discount tier
         for i in range(len(self.sorted_discounts)):
@@ -418,7 +419,7 @@ class BackorderEOQ(BasicEOQ):
     def calculate_eoq(self, analysis_mode=False):
         """Calculates EOQ with planned shortages (backordering)
         
-        Returns Q*."""
+        Returns Economical Order Quantiity (Q*)."""
 
         D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
         Q_opt = math.sqrt((2 * D * S * (H + P)) / (H * P))
@@ -478,3 +479,5 @@ class BackorderEOQ(BasicEOQ):
             
             return reorder_point
     
+
+
