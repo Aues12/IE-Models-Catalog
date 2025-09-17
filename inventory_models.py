@@ -256,14 +256,17 @@ class DiscountEOQ(BasicEOQ):
         
         if not discount_rates:
             raise ValueError("discount_rates dictionary must be provided.")
-
-        # Add the base price tier (0 quantity, 0% discount)
-        if 0 not in discount_rates:
-            discount_rates[0] = 0
-            
+        
         # Sort the discount tiers by quantity
         self.sorted_discounts = sorted(discount_rates.items())
         self.discount_rates = discount_rates
+        
+        if not all(0 <= rate < 1 for _, rate in self.discount_rates.items()):
+            raise ValueError("All discount rates must be between 0 and 1.")
+
+        # Add the base price tier (0 quantity, 0% discount)
+        if 0 not in self.discount_rates:
+            self.discount_rates[0] = 0
 
     def calculate_total_cost(self, quantity, price):
         """
