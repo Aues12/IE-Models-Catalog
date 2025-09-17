@@ -78,7 +78,7 @@ The `BackorderEOQ` class extends EOQ by allowing **shortages (backorders)** whic
 
 ```python
 
-backorder_model = Backorder_EOQ(
+backorder_model = BackorderEOQ(
     price=200,
     demand_rate=800,
     ordering_cost=100,
