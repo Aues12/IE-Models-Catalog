@@ -128,7 +128,7 @@ discount_model.calculate_eoq(analysis_mode=True)
                                                  }
 ```
 
-`analysis_mode` is also available for `Discount_EOQ`, which prints out internal variables; good for degbugging purposes and for seeing the underlying algorithmic steps.
+`analysis_mode` is also available for `DiscountEOQ`, which prints out internal variables; good for degbugging purposes and for seeing the underlying algorithmic steps.
 
 
 
