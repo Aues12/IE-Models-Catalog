@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inventory-models-catalog"
+version = "0.1.0"
+description = "A catalog of inventory management models including EOQ variants"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+  {name = "Emin Ali Ertenü"}
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Mathematics"
+]
+keywords = ["inventory", "operations research", "supply chain", "eoq"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/IE-Models-Catalog"
+Repository = "https://github.com/IE-Models-Catalog"
+
+[tool.setuptools.packages.find]
+include = ["inventory_models"]
