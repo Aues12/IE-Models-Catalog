@@ -1,5 +1,7 @@
 import math
 
+__all__ = ["BasicEOQ", "EPQ", "DiscountEOQ", "BackorderEOQ"]
+
 class BasicEOQ:
     """
     A class to represent the Economic Order Quantity (EOQ) model.
@@ -257,25 +259,33 @@ class DiscountEOQ(BasicEOQ):
         if not discount_rates:
             raise ValueError("discount_rates dictionary must be provided.")
         
-        # Sort the discount tiers by quantity
-        self.sorted_discounts = sorted(discount_rates.items())
-        self.discount_rates = discount_rates
-        
-        if not all(0 <= rate < 1 for _, rate in self.discount_rates.items()):
+        # Work on a copy so callers' dictionaries are not mutated unexpectedly.
+        original_rates = dict(discount_rates)
+
+        if not all(0 <= rate < 1 for rate in original_rates.values()):
             raise ValueError("All discount rates must be between 0 and 1.")
 
-        # Add the base price tier (0 quantity, 0% discount)
-        if 0 not in self.discount_rates:
-            self.discount_rates[0] = 0
+        sanitized_rates = {}
+        for qty, rate in original_rates.items():
+            normalized_qty = max(1, int(qty))
+            sanitized_rates[normalized_qty] = max(rate, sanitized_rates.get(normalized_qty, 0.0))
+
+        sanitized_rates.setdefault(1, 0.0)
+
+        # Sort the discount tiers by quantity after normalization
+        self.sorted_discounts = sorted(sanitized_rates.items())
+        self.discount_rates = dict(self.sorted_discounts)
 
     def calculate_total_cost(self, quantity, price):
         """
         Calculates the total annual inventory cost for a given quantity and price.
         Total Cost = Purchase Cost + Ordering Cost + Holding Cost
         """
+        if quantity <= 0:
+            raise ValueError("Order quantity must be positive to compute total cost.")
+
         purchase_cost = self.demand_rate * price
-        # Prevent division by zero if quantity is zero
-        ordering_cost_component = (self.demand_rate / quantity) * self.ordering_cost if quantity > 0 else 0
+        ordering_cost_component = (self.demand_rate / quantity) * self.ordering_cost
         holding_cost_component = (quantity / 2) * (price * self.holding_rate)
         return purchase_cost + ordering_cost_component + holding_cost_component
 
@@ -311,7 +321,8 @@ class DiscountEOQ(BasicEOQ):
             # Upper bound is 1 unit less then the next price break
             max_qty = float('inf')
             if i + 1 < len(quantity_breaks):
-                max_qty = quantity_breaks[i+1] - 1
+                next_break = quantity_breaks[i + 1]
+                max_qty = max(min_qty, next_break - 1)
 
             # Calculate holding cost for the current price
             H = discounted_price * self.holding_rate
@@ -324,7 +335,7 @@ class DiscountEOQ(BasicEOQ):
 
             if analysis_mode:
                 print("candidate eoq_", i+1, ": ", candidate_eoq)
-            
+
             # Determine the valid order quantity for this tier
             if candidate_eoq > max_qty:
                 order_quantity = max_qty
@@ -336,8 +347,18 @@ class DiscountEOQ(BasicEOQ):
             if analysis_mode:
                 print("order quantity: ", order_quantity)
 
+            if order_quantity <= 0:
+                if analysis_mode:
+                    print("Skipping non-positive order quantity")
+                continue
+
             # Calculate total cost for this valid order quantity
-            total_cost = self.calculate_total_cost(order_quantity, discounted_price)
+            try:
+                total_cost = self.calculate_total_cost(order_quantity, discounted_price)
+            except ValueError:
+                if analysis_mode:
+                    print("Skipping invalid order quantity")
+                continue
 
             if analysis_mode:
                 print("total cost: ", total_cost)
@@ -352,11 +373,14 @@ class DiscountEOQ(BasicEOQ):
                 if analysis_mode:
                     print("Didn't updated the minimum total cost")
 
+        if best_order_quantity is None:
+            raise ValueError("No feasible order quantity found for the given discount schedule.")
+
         return {
-                "best_quantity": best_order_quantity,
-                "min_total_cost": min_total_cost,
-                "unit_price": best_unit_price
-                                                    }
+            "best_quantity": best_order_quantity,
+            "min_total_cost": min_total_cost,
+            "unit_price": best_unit_price,
+        }
 
     def calculate_reorder_point(
         self,
