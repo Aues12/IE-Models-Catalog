@@ -152,3 +152,16 @@ class TestDiscountEOQ:
     def test_requires_discount_tiers(self):
         with pytest.raises(Exception):
             DiscountEOQ(price=15, demand_rate=1000, ordering_cost=40, holding_rate=0.25, discount_rates={})
+
+    def test_discount_never_recommends_zero_quantity(self):
+        model = DiscountEOQ(
+            price=20.0,
+            demand_rate=600.0,
+            ordering_cost=30.0,
+            holding_rate=0.20,
+            discount_rates={200: 0.05, 400: 0.1},
+        )
+
+        result = model.calculate_eoq()
+
+        assert result["best_quantity"] > 0
