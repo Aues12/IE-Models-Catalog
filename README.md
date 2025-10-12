@@ -22,6 +22,10 @@ The catalog is designed to grow from these fundamentals into more advanced scena
 
 ## Quick Start
 
+### How to install
+
+There isn't an installation/packaging feature available for this library - yet. However, you can dowload ```inventory_models.py``` module and use it as you wish. Just don't forget that it will work like an ordinary python file, and not like a package.
+
 ### BasicEOQ
 
 The `BasicEOQ` class implements the classic **Economic Order Quantity** model. Instantiate it with your demand, cost, and holding parameters, then call the helper methods to calculate optimal order size and reorder point.
