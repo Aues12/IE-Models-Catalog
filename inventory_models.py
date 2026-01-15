@@ -15,7 +15,7 @@ class BasicEOQ:
         lead_time = None            # lead time parameter (L)
     ):
         """
-        Initializes a EOQ model.
+        Initializes an EOQ model.
         Can represent various inventory management scenarios.
 
         Core Parameters:
@@ -27,7 +27,7 @@ class BasicEOQ:
 
         """
         # Check parameter boundaries
-        if demand_rate <= 0 or ordering_cost < 0 or price <= 0 or holding_rate <= 0:
+        if demand_rate <= 0 or ordering_cost <= 0 or price <= 0 or holding_rate <= 0:
             raise ValueError("All core parameters (demand_rate, price, holding_rate, ordering_cost) must be positive.")
         
         self.price = price
@@ -37,7 +37,7 @@ class BasicEOQ:
         self.holding_cost = self.price * self.holding_rate
 
         self.lead_time = lead_time
-        
+        self.eoq_value = None
 
     def calculate_eoq(self, analysis_mode: bool = False):
         """
@@ -55,16 +55,16 @@ class BasicEOQ:
         D = self.demand_rate
         H = self.holding_cost
         S = self.ordering_cost
+
+        eoq = math.sqrt(2 * D * S / H)
+
+        self.eoq_value = eoq            # Store EOQ value for later use
         
         if analysis_mode:
             print("--- EOQ Calculation Analysis ---")
             print(f"Demand Rate (D): {D}")
             print(f"Ordering Cost (S): {S}")
             print(f"Holding Cost (H): {H}")
-
-        eoq = math.sqrt(2 * D * S / H)
-
-        if analysis_mode:
             print(f"Formula: math.sqrt(2 * {D} * {S} / {H})")
             print(f"Economic Order Quantity (EOQ): {eoq}")
             print("-----------------------------------")
@@ -113,6 +113,21 @@ class BasicEOQ:
         elif self.lead_time is None:
             raise ValueError("Lead time must be provided for reorder point calculation.")
 
+
+    def inventory_level(self, t, analysis_mode: bool = False):
+        t = t/365
+        D = self.demand_rate
+        Q = self.calculate_eoq()
+        T = Q/D
+        if analysis_mode:
+            print("--- Inventory Level Calculation Analysis ---")
+            print(f"Demand Rate (D): {D}")
+            print(f"Economic Order Quantity (Q): {Q}")
+            print(f"Cycle Time (T) (days): {T * 365}")
+            print(f"Time (t) (days): {t * 365}")
+            print(f"Inventory Level at time t: {Q - D * (t % T)}")
+        else:
+            return (Q - D * (t % T))
 
 class EPQ(BasicEOQ):
     """
@@ -171,63 +186,19 @@ class EPQ(BasicEOQ):
         H = self.holding_cost
         S = self.ordering_cost
         P = self.production_rate
+
+        epq = math.sqrt((2 * D * S / H) * (P / (P - D)))
         
         if analysis_mode:
             print(f"Demand Rate (D): {D}")
             print(f"Ordering Cost (S): {S}")
             print(f"Holding Cost (H): {H}")
             print(f"Production Rate (P): {P}")
-
-        epq = math.sqrt((2 * D * S / H) * (P / (P - D)))
-        
-        if analysis_mode:
             print(f"Formula: math.sqrt((2 * {D} * {S} / {H}) * ({P} / ({P} - {D})))")
             print(f"Economic Production Quantity (EPQ): {epq}")
             print("-----------------------------------")
 
         return epq
-
-    def calculate_reorder_point(
-        self,
-        lead_time,
-        safety_stock: float = 0,
-        days_of_operation: int = 365,
-                                ):
-        """
-        Calculates the Reorder Point (ROP).
-
-        ROP is the inventory level at which a new order should be placed.
-
-        The formula used is:
-
-        ROP = (Daily Demand * Lead Time) + Safety Stock
-
-        where Daily Demand = Annual Demand / Days of Operation.
-
-        Args:
-            lead_time: The time (in days) between placing an order and receiving it.
-            safety_stock: Extra stock to prevent stockouts. Defaults to 0.
-            days_of_operation: The number of operating days in a year. Defaults to 365.
-
-        Returns:
-            The reorder point in units.
-        """
-        self.lead_time = lead_time
-        
-        if self.lead_time is not None:
-            if self.lead_time < 0 or safety_stock < 0:
-                raise ValueError("Lead time and safety stock cannot be negative.")
-            if days_of_operation <= 0:
-                raise ValueError("Days of operation must be a positive number.")
-
-            daily_demand = self.demand_rate / days_of_operation
-            reorder_point = (daily_demand * self.lead_time) + safety_stock
-            
-            return reorder_point
-    
-        elif self.lead_time is None:
-            raise ValueError("Lead time must be provided for reorder point calculation.")
-        
 
 class DiscountEOQ(BasicEOQ):
     
@@ -315,13 +286,8 @@ class DiscountEOQ(BasicEOQ):
 
             # Calculate holding cost for the current price
             H = discounted_price * self.holding_rate
-            if H <= 0:
-                # If holding cost is zero or negative, EOQ is infinite or undefined.
-                # In a practical sense, we should just consider the boundary.
-                candidate_eoq = max_qty
-            else:
-                candidate_eoq = math.sqrt((2 * self.demand_rate * self.ordering_cost) / H)
-
+            # Calculate EOQ for the current price
+            candidate_eoq = math.sqrt((2 * self.demand_rate * self.ordering_cost) / H)
             if analysis_mode:
                 print("candidate eoq_", i+1, ": ", candidate_eoq)
             
@@ -357,48 +323,6 @@ class DiscountEOQ(BasicEOQ):
                 "min_total_cost": min_total_cost,
                 "unit_price": best_unit_price
                                                     }
-
-    def calculate_reorder_point(
-        self,
-        lead_time,
-        safety_stock: float = 0,
-        days_of_operation: int = 365,
-                                ):
-        """
-        Calculates the Reorder Point (ROP).
-
-        ROP is the inventory level at which a new order should be placed.
-
-        The formula used is:
-
-        ROP = (Daily Demand * Lead Time) + Safety Stock
-
-        where Daily Demand = Annual Demand / Days of Operation.
-
-        Args:
-            lead_time: The time (in days) between placing an order and receiving it.
-            safety_stock: Extra stock to prevent stockouts. Defaults to 0.
-            days_of_operation: The number of operating days in a year. Defaults to 365.
-
-        Returns:
-            The reorder point in units.
-        """
-        self.lead_time = lead_time
-        
-        if self.lead_time is not None:
-            if self.lead_time < 0 or safety_stock < 0:
-                raise ValueError("Lead time and safety stock cannot be negative.")
-            if days_of_operation <= 0:
-                raise ValueError("Days of operation must be a positive number.")
-
-            daily_demand = self.demand_rate / days_of_operation
-            reorder_point = (daily_demand * self.lead_time) + safety_stock
-            
-            return reorder_point
-        
-        elif self.lead_time is None:
-            raise ValueError("Lead time must be provided for reorder point calculation.")
-    
 
 class BackorderEOQ(BasicEOQ):
     """A class to represent the Economic Order Quantity (EOQ) model with planned shortages (backordering).
@@ -451,45 +375,3 @@ class BackorderEOQ(BasicEOQ):
         B_max = (H / (H + P)) * Q
         total_cost = (D * S / Q) + (H * S_max**2 / (2 * Q)) + (P * B_max**2 / (2 * Q))
         return {"Q_opt": Q, "S_max": S_max, "B_max": B_max, "TotalCost": total_cost}
-    
-    def calculate_reorder_point(
-        self,
-        lead_time,
-        safety_stock: float = 0,
-        days_of_operation: int = 365,
-                                ):
-        """
-        Calculates the Reorder Point (ROP).
-
-        ROP is the inventory level at which a new order should be placed.
-
-        The formula used is:
-
-        ROP = (Daily Demand * Lead Time) + Safety Stock
-
-        where Daily Demand = Annual Demand / Days of Operation.
-
-        Args:
-            lead_time: The time (in days) between placing an order and receiving it.
-            safety_stock: Extra stock to prevent stockouts. Defaults to 0.
-            days_of_operation: The number of operating days in a year. Defaults to 365.
-
-        Returns:
-            The reorder point in units.
-        """
-        self.lead_time = lead_time
-        
-        if self.lead_time is not None:
-            if self.lead_time < 0 or safety_stock < 0:
-                raise ValueError("Lead time and safety stock cannot be negative.")
-            if days_of_operation <= 0:
-                raise ValueError("Days of operation must be a positive number.")
-
-            daily_demand = self.demand_rate / days_of_operation
-            reorder_point = (daily_demand * self.lead_time) + safety_stock
-            
-            return reorder_point
-    
-        elif self.lead_time is None:
-            raise ValueError("Lead time must be provided for reorder point calculation.")
-
