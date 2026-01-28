@@ -125,7 +125,7 @@ class TestDiscountEOQ:
             discount_rates={500: 0.05, 1200: 0.10}
             )
         
-        got = model.calculate_eoq(analysis_mode=False)["best_quantity"]
+        got = model.calculate_eoq(analysis_mode=False)
 
         want = expected_discount(
             price=15.0,
@@ -145,8 +145,8 @@ class TestDiscountEOQ:
             holding_rate=0.25,
             discount_rates={500: 0.05, 1200: 0.10}
             )
-        a = model.calculate_eoq(analysis_mode=False)["best_quantity"]
-        b = model.calculate_eoq(analysis_mode=False)["best_quantity"]
+        a = model.calculate_eoq(analysis_mode=False)
+        b = model.calculate_eoq(analysis_mode=False)
         assert a == pytest.approx(b, rel=1e-12)
 
     def test_requires_discount_tiers(self):
