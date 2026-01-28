@@ -122,17 +122,8 @@ discount_model = DiscountEOQ(
 
 discount_model.calculate_eoq(analysis_mode=True)
 ```
-`calculate_eoq()` returns a **dictionary** for `DiscountEOQ`:
 
-```python
-{
-                "best_quantity": best_order_quantity,
-                "min_total_cost": min_total_cost,
-                "unit_price": best_unit_price
-                                                 }
-```
-
-`analysis_mode` is also available for `DiscountEOQ`, which prints out internal variables; good for degbugging purposes and for seeing the underlying algorithmic steps.
+`analysis_mode` is also available for `DiscountEOQ`, which prints out internal variables; good for degbugging purposes and for seeing the underlying algorithmic steps. It also prints out analytics such as Minimum Total Cost and Best Unit Price.
 
 
 
