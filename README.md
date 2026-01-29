@@ -34,7 +34,7 @@ The `BasicEOQ` class implements the classic **Economic Order Quantity** model. I
 from inventory_models import BasicEOQ
 
 # Create model instance
-model = BasicEOQ(
+eoq_model = BasicEOQ(
     price=50.0,
     demand_rate=1200,
     ordering_cost=75,
@@ -42,12 +42,12 @@ model = BasicEOQ(
 )
 
 # Calculate economic order quantity (EOQ)
-eoq = model.calculate_eoq()
+eoq = eoq_model.calculate_eoq()
 # Calculate reorder point (in terms of units)
-reorder_point = model.calculate_reorder_point(lead_time=10, safety_stock=20)
+reorder_point = eoq_model.calculate_reorder_point(lead_time=10, safety_stock=20)
 
-print(f"Economical Order Quantity (Q*): {round(eoq)} units")
-print(f"Reorder Point: {round(reorder_point)} units")
+print(f"Economical Order Quantity (Q*): {eoq} units")
+print(f"Reorder Point: {reorder_point} units")
 ```
 
 The example prints the optimal batch size for replenishment and the stock level that should trigger a new order, illustrating how the catalog’s classes can be embedded in larger applications or notebooks.
@@ -65,13 +65,13 @@ epq_model = EPQ(
     ordering_cost=75,
     holding_rate=0.20,
     production_rate=1200
-)
+    )
 
 epq = epq_model.calculate_eoq()
-reorder_point = model.calculate_reorder_point(lead_time=10, safety_stock=20)
+reorder_point = epq_model.calculate_reorder_point(lead_time=10, safety_stock=20)
 
-print(f"Economical Order Quantity (Q*): {round(epq)} units")
-print(f"Reorder Point: {round(reorder_point)} units")
+print(f"Economical Order Quantity (Q*): {epq} units")
+print(f"Reorder Point: {reorder_point} units")
 ```
 
 The only difference is the `production_rate` parameter. The syntax for `calculate_eoq()` and `calculate_reorder_point()` methods is the same as `BasicEOQ`.
@@ -83,12 +83,12 @@ The `BackorderEOQ` class extends EOQ by allowing **shortages (backorders)** whic
 ```python
 
 backorder_model = BackorderEOQ(
-    price=200,
-    demand_rate=800,
-    ordering_cost=100,
-    holding_rate= 0.25,
-    shortage_cost=30
-)
+    price=100,
+    demand_rate=500,
+    ordering_cost=200,
+    shortage_cost=50,
+    holding_rate=0.2
+    )
 
 eoq = backorder_model.calculate_eoq()
 
@@ -125,10 +125,42 @@ discount_model.calculate_eoq(analysis_mode=True)
 
 `analysis_mode` is also available for `DiscountEOQ`, which prints out internal variables; good for degbugging purposes and for seeing the underlying algorithmic steps. It also prints out analytics such as Minimum Total Cost and Best Unit Price.
 
+### Inventory Level
+
+You can calculate the **Inventory Level** of an EOQ model at time `t` using the method `.inventory_level(t)`. Method takes time `t` in the unit of days. For example, the inventory level at tenth day is `eoq_model.inventory_level(t=10)`.
 
 
+### Graphing
 
+You can plot the EOQ function using `.graph()` method. This method is available for all 4 classes. Method uses `plotly` as the default renderer but you can optionally choose `matplotlib` as well.
 
+```python
+
+eoq_model.graph(renderer="plotly")
+```
+
+<img width="1063" height="450" alt="image" src="https://github.com/user-attachments/assets/b656ec01-fe5a-4931-ac3e-2c87cb504822" />
+
+```python
+
+epq_model.graph()
+```
+
+<img width="1063" height="450" alt="image" src="https://github.com/user-attachments/assets/ddb7252b-0cb8-4f15-bd70-6938b4dc2a87" />
+
+```python
+
+backorder_model.graph()
+```
+
+<img width="1063" height="450" alt="image" src="https://github.com/user-attachments/assets/b506aa6d-a564-4050-8196-eaac2453fab7" />
+
+```python
+
+discount_model.graph()
+```
+
+<img width="1063" height="450" alt="image" src="https://github.com/user-attachments/assets/ea32a812-7168-4f3e-a554-d09c69fd2812" />
 
 
 
