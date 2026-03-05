@@ -25,17 +25,17 @@ The catalog is designed to grow from these fundamentals into more advanced scena
 ### How to install
 
 Clone the repository:
-```
+```bash
 git clone https://github.com/Aues12/IE-Models-Catalog.git
 cd IE-Models-Catalog
 ```
 (Optional) Create and activate a virtual environment:
-```
+```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 Install the required dependencies:
-```
+```bash
 pip install -r requirements.txt
 ```
 ### BasicEOQ
