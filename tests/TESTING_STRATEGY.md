@@ -85,3 +85,16 @@ This is where testing blends into **API design**. Good APIs are testable; if it'
 * The better your tests, the more confidently you can improve or refactor your models
 
 This strategy should evolve with the project—but its core principle remains: **tests are how you teach your code to be reliable**.
+
+---
+
+## Extending This Strategy to Dynamic Models
+
+The repository now includes `DynamicLotSizing` in [dynamic_models.py](../dynamic_models.py), so test coverage should expand beyond the EOQ family.
+
+Recommended additions:
+
+* Validate both supported methods: `wagner-whitin` and `silver-meal`
+* Use small hand-checkable demand sequences as regression fixtures
+* Test constructor validation for empty demand, negative demand, and negative costs
+* Assert returned `order_quantities`, `order_periods`, and `total_cost` together so the plan and its cost stay consistent

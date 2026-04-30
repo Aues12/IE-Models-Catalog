@@ -1,6 +1,6 @@
 ## 1. Basic EOQ
 
-`Basic_EOQ` class of `inventory_models.py`.
+`BasicEOQ` class of `inventory_models.py`.
 
 - **Definition**: Economic Order Quantity (EOQ) is the simplest inventory model.
 - **Assumption**: Instant delivery, constant demand.
@@ -43,7 +43,7 @@ This model is the **foundation**. All variations build upon it.
 
 ### 2.2 EOQ with Quantity Discounts
 
-`Discount_EOQ` class of `inventory_models.py`.
+`DiscountEOQ` class of `inventory_models.py`.
 
 - **Definition**: Applies when suppliers offer **price breaks** for larger order sizes.
 - **Assumptions**:
@@ -64,7 +64,7 @@ This model is the **foundation**. All variations build upon it.
 
 ### 2.3 EOQ with Backordering
 
-`Backorder_EOQ` class of `inventory_models.py`.
+`BackorderEOQ` class of `inventory_models.py`.
 
 - **Definition**: Extends EOQ by allowing **shortages** (backorders) which are filled later, at a cost.
 - **Assumptions**:
