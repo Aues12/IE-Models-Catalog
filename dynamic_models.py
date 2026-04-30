@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 
@@ -21,9 +21,9 @@ class DLSResult:
 class DynamicLotSizing:
     def __init__(self, data: DLSInput):
         self.data = data
-        self._validate()
+        self._validate_parameters()
 
-    def _validate(self):
+    def _validate_parameters(self):
         if not self.data.demand:
             raise ValueError("Demand list cannot be empty.")
 
@@ -36,7 +36,17 @@ class DynamicLotSizing:
         if any(demand < 0 for demand in self.data.demand):
             raise ValueError("Demand values cannot be negative.")
 
-    
+    # ------------------ Main Solver ------------------------------
+    def solve(self, method: str = "wagner-whitin") -> DLSResult:
+        if method == "wagner-whitin":
+            return self._solve_wagner_whitin()
+        elif method == "silver-meal":
+            return self._solve_silver_meal()
+        else:
+            raise ValueError(f"Unknown method: {method}")
+        
+
+    # ------------------ Wagner-Whitin Algorithm ------------------
     def _compute_cost_matrix(self):
         demand = self.data.demand
         K = self.data.ordering_cost
@@ -58,8 +68,7 @@ class DynamicLotSizing:
 
         return C
     
-
-    def solve(self) -> DLSResult:
+    def _solve_wagner_whitin(self) -> DLSResult:
 
         demand = self.data.demand
         T = len(demand)
@@ -125,3 +134,80 @@ class DynamicLotSizing:
             total_cost=min_cost_up_to[T],
             order_periods=order_periods
         )
+    
+    # ------------------ Silver-Meal Heuristic ------------------
+    def _solve_silver_meal(self) -> DLSResult:
+        """
+        Silver-Meal heuristic for dynamic lot sizing.
+
+        Returns a feasible (not necessarily optimal) ordering plan
+        based on average cost minimization.
+        """
+        demand = self.data.demand
+        K = self.data.ordering_cost
+        h = self.data.holding_cost
+
+        T = len(demand)
+
+        order_quantities: List[float] = [0.0] * T
+        order_periods: List[int] = []
+
+        t = 0
+
+        while t < T:
+            n = 1
+            prev_avg_cost = float("inf")
+
+            while True:
+                total_cost = K
+
+                # holding cost
+                for k in range(1, n):
+                    if t + k >= T:
+                        break
+                    total_cost += demand[t + k] * k * h
+
+                avg_cost = total_cost / n
+
+                if avg_cost > prev_avg_cost:
+                    break
+
+                prev_avg_cost = avg_cost
+                n += 1
+
+                if t + n > T:
+                    break
+
+            n_opt = n - 1
+
+            qty = sum(demand[t : t + n_opt])
+
+            order_quantities[t] = qty
+            order_periods.append(t + 1)
+
+            t = t + n_opt
+            
+        # --- Compute cost ---
+        inventory = 0.0
+        total_cost = 0.0
+
+        for t in range(T):
+            order = order_quantities[t]
+
+            if order > 0:
+                total_cost += K
+
+            inventory += order
+            inventory -= demand[t]
+
+            # holding cost applies to leftover inventory
+            if inventory > 0:
+                total_cost += inventory * h
+
+        return DLSResult(
+            order_quantities=order_quantities,
+            total_cost=total_cost,
+            order_periods=order_periods
+        )
+    
+    
