@@ -1,105 +1,84 @@
 # IE Models Catalog
 
-Python library for industrial engineering inventory models. The repository currently includes classical EOQ-based models and dynamic lot sizing algorithms, with usage examples, mathematical notes, and tests.
+A small Python catalog of inventory-management models for industrial engineering. It currently provides four EOQ-family models and two dynamic lot-sizing methods, together with mathematical notes and an automated test suite.
 
-The original project proposal text is preserved in [PROPOSAL.md](PROPOSAL.md).
+## Current status
 
-## Project Scope
+The implemented, tested scope is:
 
-The catalog currently covers two model groups:
+| Area | Models and methods |
+| --- | --- |
+| Static inventory | `BasicEOQ`, `EPQ`, `DiscountEOQ`, `BackorderEOQ` |
+| Reorder point | `calculate_reorder_point()` on every EOQ-family model |
+| Inventory profiles | `inventory_level(t)` and `graph()` on every EOQ-family model |
+| Dynamic lot sizing | Exact Wagner–Whitin and Silver–Meal heuristic |
 
-1. Static inventory models in [inventory_models.py](inventory_models.py)
-2. Dynamic lot sizing models in [dynamic_models.py](dynamic_models.py)
+The current test suite contains **51 tests** and was last verified with `pytest` successfully completing all of them.
 
-### Static inventory models
+## Installation
 
-* `BasicEOQ`
-* `EPQ`
-* `BackorderEOQ`
-* `DiscountEOQ`
-
-### Dynamic lot sizing models
-
-* `DynamicLotSizing.solve(method="wagner-whitin")`
-* `DynamicLotSizing.solve(method="silver-meal")`
-
-## Documentation
-
-Repository documentation is kept in Markdown under [`docs/`](docs/):
-
-* [EOQ model guide](docs/EOQ-Model-docs.md)
-* [EOQ mathematics](docs/EOQ-Math-docs.md)
-* [Dynamic lot sizing mathematics](docs/DP-Math-docs.md)
-* [Wagner-Whitin walkthrough](docs/Wagner-Whitin_Algorithm.md)
-
-## Quick Start
-
-### Requirements
-
-* Python `3.12` is the expected development version in this repository.
-* `numpy` is required for the model implementations.
-* `matplotlib` and `plotly` are used by graphing methods.
-* `pytest` is used for the test suite.
-
-### Installation
-
-Clone the repository:
+The repository's development target is Python 3.12. Install the dependencies in a virtual environment:
 
 ```bash
 git clone https://github.com/Aues12/IE-Models-Catalog.git
 cd IE-Models-Catalog
-```
-
-Create and activate a virtual environment:
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
 
-Run the tests:
+Dependencies are `numpy`, `matplotlib`, `plotly`, and `pytest`.
+
+Run the full test suite with:
 
 ```bash
-python -m pytest -q
+.venv/bin/python -m pytest tests/ -v
 ```
 
-## Usage
+## Static inventory models
 
-### BasicEOQ
+All EOQ-family constructors use `price`, `demand_rate`, `ordering_cost`, and an optional `holding_rate` (default `0.25`). Holding cost is calculated as `price * holding_rate`. Core values must be positive.
 
-The `BasicEOQ` class implements the classic **Economic Order Quantity** model. Instantiate it with demand, price, ordering cost, and holding rate, then use helper methods to compute the optimal order quantity and reorder point.
+### Basic EOQ
+
+`BasicEOQ` implements the classic economic order quantity model.
 
 ```python
 from inventory_models import BasicEOQ
 
-eoq_model = BasicEOQ(
+model = BasicEOQ(
     price=50.0,
     demand_rate=1200,
     ordering_cost=75,
     holding_rate=0.20,
 )
 
-eoq = eoq_model.calculate_eoq()
-reorder_point = eoq_model.calculate_reorder_point(lead_time=10, safety_stock=20)
+quantity = model.calculate_eoq()
+reorder_point = model.calculate_reorder_point(
+    lead_time=10,
+    safety_stock=20,
+)
 
-print(f"Economic Order Quantity (Q*): {eoq} units")
-print(f"Reorder Point: {reorder_point} units")
+print(quantity)
+print(reorder_point)
 ```
+
+`calculate_reorder_point()` uses:
+
+```text
+reorder point = (demand_rate / days_of_operation) * lead_time + safety_stock
+```
+
+`lead_time` and `safety_stock` cannot be negative; `days_of_operation` defaults to `365` and must be positive.
 
 ### EPQ
 
-`EPQ` is an extension of `BasicEOQ` for cases where items are produced gradually instead of arriving all at once. The additional required parameter is `production_rate`, and it must be greater than `demand_rate`.
+`EPQ` models gradual replenishment during production. It adds `production_rate`, which must be greater than `demand_rate`.
 
 ```python
 from inventory_models import EPQ
 
-epq_model = EPQ(
+model = EPQ(
     price=50.0,
     demand_rate=1000,
     ordering_cost=75,
@@ -107,21 +86,35 @@ epq_model = EPQ(
     holding_rate=0.20,
 )
 
-epq = epq_model.calculate_eoq()
-reorder_point = epq_model.calculate_reorder_point(lead_time=10, safety_stock=20)
-
-print(f"Economic Production Quantity (Q*): {epq} units")
-print(f"Reorder Point: {reorder_point} units")
+print(model.calculate_eoq())
 ```
 
-### BackorderEOQ
+### Discount EOQ
 
-The `BackorderEOQ` class extends EOQ by allowing **shortages (backorders)** and adds the required `shortage_cost` parameter.
+`DiscountEOQ` evaluates all supplied quantity-discount tiers and returns the order quantity with the lowest annual purchase, ordering, and holding cost. Supply `discount_rates` as `{minimum_quantity: discount_rate}`; discount rates must be in the interval `[0, 1)`.
+
+```python
+from inventory_models import DiscountEOQ
+
+model = DiscountEOQ(
+    price=100,
+    demand_rate=1000,
+    ordering_cost=50,
+    holding_rate=0.20,
+    discount_rates={0: 0.0, 100: 0.05, 200: 0.10},
+)
+
+print(model.calculate_eoq())
+```
+
+### EOQ with planned backorders
+
+`BackorderEOQ` permits planned shortages. It adds a positive `shortage_cost` parameter. `calculate_cycle_metrics()` returns a dictionary containing `Q_opt`, `S_max`, `B_max`, and `TotalCost`.
 
 ```python
 from inventory_models import BackorderEOQ
 
-backorder_model = BackorderEOQ(
+model = BackorderEOQ(
     price=100,
     demand_rate=500,
     ordering_cost=200,
@@ -129,41 +122,17 @@ backorder_model = BackorderEOQ(
     holding_rate=0.2,
 )
 
-eoq = backorder_model.calculate_eoq()
-cycle_metrics = backorder_model.calculate_cycle_metrics()
-
-print(f"Economic Order Quantity (Q*): {eoq}")
-print("Cycle Metrics:", cycle_metrics)
+print(model.calculate_eoq())
+print(model.calculate_cycle_metrics())
 ```
 
-### DiscountEOQ
+## Dynamic lot sizing
 
-The `DiscountEOQ` class refers to a scenario where the supplier offers discounts at certain quantity levels.
+`DynamicLotSizing` turns a time-phased demand vector into an order plan. `solve()` returns a `DLSResult` with:
 
- `DiscountEOQ` evaluates quantity discount tiers and selects the order quantity with the lowest total annual cost. 
-
-```python
-from inventory_models import DiscountEOQ
-
-discount_model = DiscountEOQ(
-    price=100,
-    demand_rate=1000,
-    ordering_cost=50,
-    holding_rate=0.2,
-    discount_rates={
-        0: 0.0,
-        100: 0.05,
-        200: 0.10,
-    },
-)
-
-best_quantity = discount_model.calculate_eoq(analysis_mode=True)
-print("Best Order Quantity:", best_quantity)
-```
-
-### DynamicLotSizing
-
-`DynamicLotSizing` handles time-phased demand. It currently supports the exact `wagner-whitin` method and the `silver-meal` heuristic.
+* `order_quantities`: quantity ordered in each period
+* `total_cost`: ordering plus holding cost
+* `order_periods`: one-based periods in which orders are placed
 
 ```python
 from dynamic_models import DLSInput, DynamicLotSizing
@@ -176,30 +145,36 @@ data = DLSInput(
 
 result = DynamicLotSizing(data).solve(method="wagner-whitin")
 
-print("Order quantities:", result.order_quantities)
-print("Total cost:", result.total_cost)
-print("Order periods:", result.order_periods)
+print(result.order_quantities)  # [60, 0, 0]
+print(result.total_cost)         # 180
+print(result.order_periods)      # [1]
 ```
 
-## Inventory Level and Graphing
+Available methods are:
 
-All EOQ-family classes has `.inventory_level(t)` and `.graph()` methods.
+* `method="wagner-whitin"` — exact dynamic-programming solution.
+* `method="silver-meal"` — feasible heuristic; it is not guaranteed to be optimal.
 
-You can plot the EOQ function using `.graph()` method. This method is available for all EOQ-family classes. Method uses `plotly` as the default renderer but you can optionally choose `matplotlib` as well.
+Demand must be a non-empty list of non-negative values. Ordering and holding costs must be non-negative. `DLSInput` also exposes `initial_inventory`, but the current solver does not yet use it; plans are therefore calculated without an initial-stock adjustment.
 
-* `inventory_level(t)` expects `t` in days.
-* `.graph()` uses `plotly` by default.
-* You can also set `renderer="matplotlib"`.
+## Inventory profiles and plots
+
+EOQ-family models provide `inventory_level(t)` where `t` is in days. Call `calculate_eoq()` first if you want to retain the calculated value explicitly; otherwise the profile method calculates it as needed.
+
+`graph()` renders an inventory profile with Plotly by default, or Matplotlib when requested:
 
 ```python
-eoq_model.graph(renderer="plotly")
-```
-<img width="1063" height="450" alt="image" src="https://github.com/user-attachments/assets/b656ec01-fe5a-4931-ac3e-2c87cb504822" />
-
-```python
-epq_model.graph(renderer="matplotlib")
+model.graph(renderer="plotly")
+model.graph(renderer="matplotlib")
 ```
 
-## Repository Notes
+## Documentation
 
-* The project is currently closed to external feature contributions; see [CONTRIBUTING.md](CONTRIBUTING.md).
+Further explanations and derivations are available under [`docs/`](docs/):
+
+* [EOQ model guide](docs/EOQ-Model-docs.md)
+* [EOQ mathematics](docs/EOQ-Math-docs.md)
+* [Dynamic lot sizing mathematics](docs/DP-Math-docs.md)
+* [Wagner–Whitin walkthrough](docs/Wagner-Whitin_Algorithm.md)
+
+The original project rationale is retained in [PROPOSAL.md](PROPOSAL.md). Contribution policy is described in [CONTRIBUTING.md](CONTRIBUTING.md).

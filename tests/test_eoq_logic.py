@@ -152,3 +152,17 @@ class TestDiscountEOQ:
     def test_requires_discount_tiers(self):
         with pytest.raises(Exception):
             DiscountEOQ(price=15, demand_rate=1000, ordering_cost=40, holding_rate=0.25, discount_rates={})
+
+    def test_considers_base_price_tier_when_zero_break_is_omitted(self):
+        """A high discount threshold must not exclude the undiscounted EOQ."""
+        params = dict(
+            price=100.0,
+            demand_rate=1000.0,
+            ordering_cost=10.0,
+            holding_rate=0.20,
+            discount_rates={100_000: 0.01},
+        )
+
+        model = DiscountEOQ(**params)
+
+        assert model.calculate_eoq() == pytest.approx(expected_discount(**params))
