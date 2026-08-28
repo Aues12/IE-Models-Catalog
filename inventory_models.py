@@ -1,8 +1,9 @@
 import math
-import numpy as np
 
 import matplotlib.pyplot as plt
+import numpy as np
 import plotly.express as px
+
 
 class BasicEOQ:
     """
@@ -12,11 +13,11 @@ class BasicEOQ:
 
     def __init__(
         self,
-        price: float,           # the price of the product
-        demand_rate: float,     # annual or period demand (D)
-        ordering_cost: float,   # setup cost (S)
-        holding_rate: float = 0.25, # holding cost percentage
-        lead_time = None            # lead time parameter (L)
+        price: float,  # the price of the product
+        demand_rate: float,  # annual or period demand (D)
+        ordering_cost: float,  # setup cost (S)
+        holding_rate: float = 0.25,  # holding cost percentage
+        lead_time=None,  # lead time parameter (L)
     ):
         """
         Initializes an EOQ model.
@@ -32,7 +33,9 @@ class BasicEOQ:
         """
         # Check parameter boundaries
         if demand_rate <= 0 or ordering_cost <= 0 or price <= 0 or holding_rate <= 0:
-            raise ValueError("All core parameters (demand_rate, price, holding_rate, ordering_cost) must be positive.")
+            raise ValueError(
+                "All core parameters (demand_rate, price, holding_rate, ordering_cost) must be positive."
+            )
 
         self.price = price
         self.demand_rate = demand_rate
@@ -62,7 +65,7 @@ class BasicEOQ:
 
         eoq = math.sqrt(2 * D * S / H)
 
-        self.eoq_value = eoq            # Store EOQ value for later use
+        self.eoq_value = eoq  # Store EOQ value for later use
 
         if analysis_mode:
             print("--- EOQ Calculation Analysis ---")
@@ -75,13 +78,12 @@ class BasicEOQ:
 
         return eoq
 
-
     def calculate_reorder_point(
         self,
         lead_time,
         safety_stock: float = 0,
         days_of_operation: int = 365,
-                                ):
+    ):
         """
         Calculates the Reorder Point (ROP).
 
@@ -115,14 +117,15 @@ class BasicEOQ:
             return reorder_point
 
         elif self.lead_time is None:
-            raise ValueError("Lead time must be provided for reorder point calculation.")
-
+            raise ValueError(
+                "Lead time must be provided for reorder point calculation."
+            )
 
     def inventory_level(self, t, analysis_mode: bool = False):
-        t = t/365
+        t = t / 365
         D = self.demand_rate
         Q = self.eoq_value if self.eoq_value else self.calculate_eoq()
-        T = Q/D
+        T = Q / D
         if analysis_mode:
             print("--- Inventory Level Calculation Analysis ---")
             print(f"Demand Rate (D): {D}")
@@ -131,8 +134,7 @@ class BasicEOQ:
             print(f"Time (t) (days): {t * 365}")
             print(f"Inventory Level at time t: {Q - D * (t % T)}")
         else:
-            return (Q - D * (t % T))
-
+            return Q - D * (t % T)
 
     def graph(self, renderer: str = "plotly"):
         # X is for days
@@ -148,9 +150,12 @@ class BasicEOQ:
             plt.show()
 
         if renderer == "plotly":
-            my_graph = px.line(x=X, y=Y,
-                    title='Inventory Level Over Time',
-                    labels={'x':'Days', 'y':'Inventory Level'})
+            my_graph = px.line(
+                x=X,
+                y=Y,
+                title="Inventory Level Over Time",
+                labels={"x": "Days", "y": "Inventory Level"},
+            )
             my_graph.show()
 
 
@@ -161,14 +166,15 @@ class EPQ(BasicEOQ):
     An EOQ Model that takes gradual production vs. stock quantity relationship into account.
     """
 
-    def __init__(self,
-                price: float,           # the price of the product
-                demand_rate: float,     # annual or period demand (D)
-                ordering_cost: float,   # setup cost (S)
-                production_rate: float,   # production rate parameter (P)
-                holding_rate: float = 0.25,     # holding cost percentage
-                lead_time = None
-                ):
+    def __init__(
+        self,
+        price: float,  # the price of the product
+        demand_rate: float,  # annual or period demand (D)
+        ordering_cost: float,  # setup cost (S)
+        production_rate: float,  # production rate parameter (P)
+        holding_rate: float = 0.25,  # holding cost percentage
+        lead_time=None,
+    ):
 
         # Calls - Basic EOQ - parent class
         super().__init__(
@@ -176,8 +182,8 @@ class EPQ(BasicEOQ):
             demand_rate=demand_rate,
             ordering_cost=ordering_cost,
             holding_rate=holding_rate,
-            lead_time=lead_time
-                        )
+            lead_time=lead_time,
+        )
 
         if production_rate <= 0:
             raise ValueError("Production rate must be positive.")
@@ -205,7 +211,9 @@ class EPQ(BasicEOQ):
             print("--- EPQ Calculation Analysis ---")
 
         if self.production_rate <= self.demand_rate:
-            raise ValueError("Production rate (P) must be greater than demand rate (D).")
+            raise ValueError(
+                "Production rate (P) must be greater than demand rate (D)."
+            )
 
         D = self.demand_rate
         H = self.holding_cost
@@ -213,6 +221,7 @@ class EPQ(BasicEOQ):
         P = self.production_rate
 
         epq = math.sqrt((2 * D * S / H) * (P / (P - D)))
+        self.eoq_value = epq
 
         if analysis_mode:
             print(f"Demand Rate (D): {D}")
@@ -225,21 +234,22 @@ class EPQ(BasicEOQ):
 
         return epq
 
-
     def inventory_level(self, t, analysis_mode: bool = False):
-        t = t/365
+        t = t / 365
         D = self.demand_rate
         P = self.production_rate
         Q = self.eoq_value if self.eoq_value else self.calculate_eoq()
-        T = Q/D
+        T = Q / D
         mod_t = t % T
-        production_end = Q/P
-        max_inventory = Q * (1 - D/P)
+        production_end = Q / P
+        max_inventory = Q * (1 - D / P)
         # Generates arrays with truth values for production and depletion phases
         production_phase = mod_t <= production_end
         depletion_phase = mod_t > production_end
 
-        inventory = ( production_phase*((P - D) * mod_t) + depletion_phase*(max_inventory - D * (mod_t - production_end)) )
+        inventory = production_phase * ((P - D) * mod_t) + depletion_phase * (
+            max_inventory - D * (mod_t - production_end)
+        )
 
         if analysis_mode:
             print("--- Inventory Level Calculation Analysis ---")
@@ -250,34 +260,35 @@ class EPQ(BasicEOQ):
             print(f"Time (t) (days): {t * 365}")
             print(f"Max Inventory Level: {max_inventory}")
             print(f"Inventory Level at time t: {inventory}")
-        
+
         else:
             return inventory
 
-class DiscountEOQ(BasicEOQ):
 
+class DiscountEOQ(BasicEOQ):
     """
     A class to represent the Economic Order Quantity (EOQ) model with quantity discounts.
 
     Takes bulk discount prices into account.
     """
 
-    def __init__(self,
-                 price: float,           # the base price of the product
-                 demand_rate: float,     # annual or period demand (D)
-                 ordering_cost: float,   # setup cost (S)
-                 holding_rate: float = 0.25,       # holding cost percentage
-                 lead_time = None,           # lead time parameter (L)
-                 discount_rates = None       # discount rates as a dictionary {min_quantity: discount_rate}
-                 ):
+    def __init__(
+        self,
+        price: float,  # the base price of the product
+        demand_rate: float,  # annual or period demand (D)
+        ordering_cost: float,  # setup cost (S)
+        holding_rate: float = 0.25,  # holding cost percentage
+        lead_time=None,  # lead time parameter (L)
+        discount_rates=None,  # discount rates as a dictionary {min_quantity: discount_rate}
+    ):
 
         super().__init__(
             price=price,
             demand_rate=demand_rate,
             ordering_cost=ordering_cost,
             holding_rate=holding_rate,
-            lead_time=lead_time
-                         )
+            lead_time=lead_time,
+        )
 
         if not discount_rates:
             raise ValueError("discount_rates dictionary must be provided.")
@@ -299,7 +310,9 @@ class DiscountEOQ(BasicEOQ):
         """
         purchase_cost = self.demand_rate * price
         # Prevent division by zero if quantity is zero
-        ordering_cost_component = (self.demand_rate / quantity) * self.ordering_cost if quantity > 0 else 0
+        ordering_cost_component = (
+            (self.demand_rate / quantity) * self.ordering_cost if quantity > 0 else 0
+        )
         holding_cost_component = (quantity / 2) * (price * self.holding_rate)
         return purchase_cost + ordering_cost_component + holding_cost_component
 
@@ -308,7 +321,7 @@ class DiscountEOQ(BasicEOQ):
         Calculates the optimal order quantity considering quantity discounts.
         """
         best_order_quantity = None
-        min_total_cost = float('inf')
+        min_total_cost = float("inf")
         best_unit_price = None
 
         quantity_breaks = [d[0] for d in self.sorted_discounts]
@@ -319,7 +332,7 @@ class DiscountEOQ(BasicEOQ):
         for i in range(len(self.sorted_discounts)):
             if analysis_mode:
                 print("\n")
-                print("Initiating step ", i+1, " of ", len(self.sorted_discounts))
+                print("Initiating step ", i + 1, " of ", len(self.sorted_discounts))
 
             # Min Quantity is the discount price break
             min_qty, discount_rate = self.sorted_discounts[i]
@@ -333,16 +346,16 @@ class DiscountEOQ(BasicEOQ):
 
             # Determine the Upper Bound for the current quantity range
             # Upper bound is 1 unit less then the next price break
-            max_qty = float('inf')
+            max_qty = float("inf")
             if i + 1 < len(quantity_breaks):
-                max_qty = quantity_breaks[i+1] - 1
+                max_qty = quantity_breaks[i + 1] - 1
 
             # Calculate holding cost for the current price
             H = discounted_price * self.holding_rate
             # Calculate EOQ for the current price
             candidate_eoq = math.sqrt((2 * self.demand_rate * self.ordering_cost) / H)
             if analysis_mode:
-                print("candidate eoq", i+1, ": ", candidate_eoq)
+                print("candidate eoq", i + 1, ": ", candidate_eoq)
 
             # Determine the valid order quantity for this tier
             if candidate_eoq > max_qty:
@@ -371,13 +384,16 @@ class DiscountEOQ(BasicEOQ):
                 if analysis_mode:
                     print("Didn't updated the minimum total cost")
 
+        self.eoq_value = best_order_quantity
+
         if analysis_mode:
             print()
             print("Best Order Quantity: ", best_order_quantity)
             print("Minimum Total Cost: ", min_total_cost)
             print("Unit Price at Best Order Quantity: ", best_unit_price)
 
-        return best_order_quantity           
+        return best_order_quantity
+
 
 class BackorderEOQ(BasicEOQ):
     """A class to represent the Economic Order Quantity (EOQ) model with planned shortages (backordering).
@@ -385,71 +401,90 @@ class BackorderEOQ(BasicEOQ):
     Takes shortage cost into account."""
 
     def __init__(
-            self,
-            price,
-            demand_rate,
-            ordering_cost,
-            shortage_cost,
-            holding_rate=0.25,
-            lead_time=None
-            ):
+        self,
+        price,
+        demand_rate,
+        ordering_cost,
+        shortage_cost,
+        holding_rate=0.25,
+        lead_time=None,
+    ):
 
         # Inherits from BasicEOQ
-        super().__init__(price,
-                         demand_rate,
-                         ordering_cost,
-                         holding_rate,
-                         lead_time)
+        super().__init__(price, demand_rate, ordering_cost, holding_rate, lead_time)
 
         if shortage_cost <= 0:
             raise ValueError("shortage_cost must be positive.")
 
-        self.shortage_cost = shortage_cost  # P: shortage/backorder cost per unit per year
+        self.shortage_cost = (
+            shortage_cost  # P: shortage/backorder cost per unit per year
+        )
 
     def calculate_eoq(self, analysis_mode=False):
         """Calculates EOQ with planned shortages (backordering)
 
         Returns Economical Order Quantiity (Q*)."""
 
-        D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
+        D, S, H, P = (
+            self.demand_rate,
+            self.ordering_cost,
+            self.holding_cost,
+            self.shortage_cost,
+        )
         Q_opt = math.sqrt((2 * D * S * (H + P)) / (H * P))
+        self.eoq_value = Q_opt
 
         return Q_opt
 
     def calculate_cycle_metrics(self):
         """Returns:
 
-            * Optimal quantity Q*,
-            * Max inventory,
-            * Max backorder,
-            * and Annual Total Cost."""
+        * Optimal quantity Q*,
+        * Max inventory,
+        * Max backorder,
+        * and Annual Total Cost."""
 
-        D, S, H, P = self.demand_rate, self.ordering_cost, self.holding_cost, self.shortage_cost
+        D, S, H, P = (
+            self.demand_rate,
+            self.ordering_cost,
+            self.holding_cost,
+            self.shortage_cost,
+        )
         Q = self.calculate_eoq()
         max_inventory = (P / (H + P)) * Q
         max_backorder = (H / (H + P)) * Q
-        total_cost = (D * S / Q) + (H * max_inventory**2 / (2 * Q)) + (P * max_backorder**2 / (2 * Q))
-        return {"Q_opt": Q, "S_max": max_inventory, "B_max": max_backorder, "TotalCost": total_cost}
+        total_cost = (
+            (D * S / Q)
+            + (H * max_inventory**2 / (2 * Q))
+            + (P * max_backorder**2 / (2 * Q))
+        )
+        return {
+            "Q_opt": Q,
+            "S_max": max_inventory,
+            "B_max": max_backorder,
+            "TotalCost": total_cost,
+        }
 
     def inventory_level(self, t, analysis_mode: bool = False):
-        t = t/365
+        t = t / 365
         D = self.demand_rate
         Q = self.eoq_value if self.eoq_value else self.calculate_eoq()
         H = self.holding_cost
         P = self.shortage_cost
-        T = Q/D
+        T = Q / D
         max_inventory = (P / (H + P)) * Q
         max_backorder = (H / (H + P)) * Q
 
         mod_t = t % T
         inventory_end = max_inventory / D
-        backorder_end = inventory_end + max_backorder / D
 
         # Generates arrays with truth values for inventory and backorder phases
         inventory_phase = mod_t <= inventory_end
         backorder_phase = mod_t > inventory_end
 
-        inventory = ( inventory_phase*(max_inventory - D * mod_t) + backorder_phase*(- D * (mod_t - inventory_end)) )
+        inventory = inventory_phase * (max_inventory - D * mod_t) + backorder_phase * (
+            -D * (mod_t - inventory_end)
+        )
 
         if analysis_mode:
             print("--- Inventory Level Calculation Analysis ---")

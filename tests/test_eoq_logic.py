@@ -2,26 +2,38 @@
 # Tests core logic and expected results
 
 import math
+
 import pytest
 
-from inventory_models import BasicEOQ, EPQ, DiscountEOQ, BackorderEOQ
+from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
 
 # --- Expectation helpers ----------------------------------------------------
+
 
 def expected_basic(price, demand_rate, ordering_cost, holding_rate, **_):
     H = price * holding_rate
     return math.sqrt(2 * demand_rate * ordering_cost / H)
 
+
 def expected_epq(price, demand_rate, ordering_cost, holding_rate, production_rate, **_):
     H = price * holding_rate
-    return math.sqrt((2 * demand_rate * ordering_cost / H) * (production_rate / (production_rate - demand_rate)))
+    return math.sqrt(
+        (2 * demand_rate * ordering_cost / H)
+        * (production_rate / (production_rate - demand_rate))
+    )
 
-def expected_backorder(price, demand_rate, ordering_cost, holding_rate, shortage_cost, **_):
+
+def expected_backorder(
+    price, demand_rate, ordering_cost, holding_rate, shortage_cost, **_
+):
     H = price * holding_rate
     P = shortage_cost
     return math.sqrt((2 * demand_rate * ordering_cost * (H + P)) / (H * P))
 
-def expected_discount(price, demand_rate, ordering_cost, holding_rate, discount_rates, **_):
+
+def expected_discount(
+    price, demand_rate, ordering_cost, holding_rate, discount_rates, **_
+):
     """Calculate the cost-minimizing order quantity when quantity discounts apply.
 
     Iterates over each discount tier, calculates the EOQ at that tier's unit price,
@@ -34,9 +46,11 @@ def expected_discount(price, demand_rate, ordering_cost, holding_rate, discount_
     for i, (price_break, discount_rate) in enumerate(tiers):
         unit_price = price * (1 - discount_rate)
         H = unit_price * holding_rate
-        next_break = tiers[i + 1][0] if i + 1 < len(tiers) else float('inf')
-        qmax = next_break - 1 if next_break != float('inf') else float('inf')
-        qstar = float('inf') if H <= 0 else math.sqrt(2 * demand_rate * ordering_cost / H)
+        next_break = tiers[i + 1][0] if i + 1 < len(tiers) else float("inf")
+        qmax = next_break - 1 if next_break != float("inf") else float("inf")
+        qstar = (
+            float("inf") if H <= 0 else math.sqrt(2 * demand_rate * ordering_cost / H)
+        )
         order_qty = min(max(qstar, price_break), qmax)
         total_cost = (
             demand_rate * unit_price
@@ -55,20 +69,26 @@ def expected_discount(price, demand_rate, ordering_cost, holding_rate, discount_
 
 # --- Grouped Test Classes ---------------------------------------------------
 
+
 class TestBasicEOQ:
     def test_core(self):
-        params = dict(price=10.0, demand_rate=1200.0, ordering_cost=50.0, holding_rate=0.20)
+        params = dict(
+            price=10.0, demand_rate=1200.0, ordering_cost=50.0, holding_rate=0.20
+        )
         model = BasicEOQ(**params)
         got = model.calculate_eoq()
         want = expected_basic(**params)
         assert got == pytest.approx(want, rel=1e-6)
 
-    @pytest.mark.parametrize("bad_params", [
-        dict(price=0, demand_rate=1000, ordering_cost=30),
-        dict(price=10, demand_rate=-1, ordering_cost=30),
-        dict(price=10, demand_rate=1000, ordering_cost=-5),
-        dict(price=10, demand_rate=1000, ordering_cost=30, holding_rate=-0.2),
-    ])
+    @pytest.mark.parametrize(
+        "bad_params",
+        [
+            dict(price=0, demand_rate=1000, ordering_cost=30),
+            dict(price=10, demand_rate=-1, ordering_cost=30),
+            dict(price=10, demand_rate=1000, ordering_cost=-5),
+            dict(price=10, demand_rate=1000, ordering_cost=30, holding_rate=-0.2),
+        ],
+    )
     def test_invalid_constructor(self, bad_params):
         with pytest.raises(Exception):
             BasicEOQ(**bad_params)
@@ -76,42 +96,104 @@ class TestBasicEOQ:
 
 class TestEPQ:
     def test_core(self):
-        params = dict(price=12.0, demand_rate=500.0, ordering_cost=40.0, holding_rate=0.25, production_rate=1000.0)
+        params = dict(
+            price=12.0,
+            demand_rate=500.0,
+            ordering_cost=40.0,
+            holding_rate=0.25,
+            production_rate=1000.0,
+        )
         model = EPQ(**params)
         got = model.calculate_eoq()
         want = expected_epq(**params)
         assert got == pytest.approx(want, rel=1e-6)
 
     def test_reproducibility(self):
-        params = dict(price=10.0, demand_rate=400.0, ordering_cost=30.0, holding_rate=0.25, production_rate=850.0)
+        params = dict(
+            price=10.0,
+            demand_rate=400.0,
+            ordering_cost=30.0,
+            holding_rate=0.25,
+            production_rate=850.0,
+        )
         model = EPQ(**params)
         a = model.calculate_eoq()
         b = model.calculate_eoq()
         assert a == pytest.approx(b, rel=1e-12)
 
+    def test_calculate_eoq_stores_result(self):
+        model = EPQ(
+            price=10,
+            demand_rate=400,
+            ordering_cost=30,
+            holding_rate=0.25,
+            production_rate=850,
+        )
+
+        result = model.calculate_eoq()
+
+        assert model.eoq_value == pytest.approx(result)
+
     def test_invalid_production_rate(self):
         with pytest.raises(Exception):
-            EPQ(price=10, demand_rate=500, ordering_cost=30, holding_rate=0.25, production_rate=400)
+            EPQ(
+                price=10,
+                demand_rate=500,
+                ordering_cost=30,
+                holding_rate=0.25,
+                production_rate=400,
+            )
 
 
 class TestBackorderEOQ:
     def test_core(self):
-        params = dict(price=9.0, demand_rate=1500.0, ordering_cost=45.0, holding_rate=0.22, shortage_cost=3.0)
+        params = dict(
+            price=9.0,
+            demand_rate=1500.0,
+            ordering_cost=45.0,
+            holding_rate=0.22,
+            shortage_cost=3.0,
+        )
         model = BackorderEOQ(**params)
         got = model.calculate_eoq()
         want = expected_backorder(**params)
         assert got == pytest.approx(want, rel=1e-6)
 
     def test_reproducibility(self):
-        params = dict(price=7.5, demand_rate=1100.0, ordering_cost=35.0, holding_rate=0.22, shortage_cost=2.5)
+        params = dict(
+            price=7.5,
+            demand_rate=1100.0,
+            ordering_cost=35.0,
+            holding_rate=0.22,
+            shortage_cost=2.5,
+        )
         model = BackorderEOQ(**params)
         a = model.calculate_eoq()
         b = model.calculate_eoq()
         assert a == pytest.approx(b, rel=1e-12)
 
+    def test_calculate_eoq_stores_result(self):
+        model = BackorderEOQ(
+            price=7.5,
+            demand_rate=1100,
+            ordering_cost=35,
+            holding_rate=0.22,
+            shortage_cost=2.5,
+        )
+
+        result = model.calculate_eoq()
+
+        assert model.eoq_value == pytest.approx(result)
+
     def test_invalid_shortage_cost(self):
         with pytest.raises(Exception):
-            BackorderEOQ(price=9, demand_rate=800, ordering_cost=25, holding_rate=0.2, shortage_cost=0)
+            BackorderEOQ(
+                price=9,
+                demand_rate=800,
+                ordering_cost=25,
+                holding_rate=0.2,
+                shortage_cost=0,
+            )
 
 
 class TestDiscountEOQ:
@@ -122,9 +204,9 @@ class TestDiscountEOQ:
             demand_rate=1000.0,
             ordering_cost=40.0,
             holding_rate=0.25,
-            discount_rates={500: 0.05, 1200: 0.10}
-            )
-        
+            discount_rates={500: 0.05, 1200: 0.10},
+        )
+
         got = model.calculate_eoq(analysis_mode=False)
 
         want = expected_discount(
@@ -132,9 +214,9 @@ class TestDiscountEOQ:
             demand_rate=1000.0,
             ordering_cost=40.0,
             holding_rate=0.25,
-            discount_rates={500: 0.05, 1200: 0.10}
-            )
-        
+            discount_rates={500: 0.05, 1200: 0.10},
+        )
+
         assert got == pytest.approx(want, rel=1e-6)
 
     def test_reproducibility(self):
@@ -143,15 +225,34 @@ class TestDiscountEOQ:
             demand_rate=1000.0,
             ordering_cost=40.0,
             holding_rate=0.25,
-            discount_rates={500: 0.05, 1200: 0.10}
-            )
+            discount_rates={500: 0.05, 1200: 0.10},
+        )
         a = model.calculate_eoq(analysis_mode=False)
         b = model.calculate_eoq(analysis_mode=False)
         assert a == pytest.approx(b, rel=1e-12)
 
+    def test_calculate_eoq_stores_result(self):
+        model = DiscountEOQ(
+            price=15.0,
+            demand_rate=1000.0,
+            ordering_cost=40.0,
+            holding_rate=0.25,
+            discount_rates={500: 0.05, 1200: 0.10},
+        )
+
+        result = model.calculate_eoq()
+
+        assert model.eoq_value == pytest.approx(result)
+
     def test_requires_discount_tiers(self):
         with pytest.raises(Exception):
-            DiscountEOQ(price=15, demand_rate=1000, ordering_cost=40, holding_rate=0.25, discount_rates={})
+            DiscountEOQ(
+                price=15,
+                demand_rate=1000,
+                ordering_cost=40,
+                holding_rate=0.25,
+                discount_rates={},
+            )
 
     def test_considers_base_price_tier_when_zero_break_is_omitted(self):
         """A high discount threshold must not exclude the undiscounted EOQ."""

@@ -23,6 +23,28 @@ def test_silver_meal_matches_documented_example():
     assert result.order_periods == [1]
 
 
+@pytest.mark.parametrize("method", ["wagner-whitin", "silver-meal"])
+def test_dynamic_lot_sizing_skips_leading_zero_demand_period(method):
+    data = DLSInput(demand=[0, 10], ordering_cost=100, holding_cost=1)
+
+    result = DynamicLotSizing(data).solve(method)
+
+    assert result.order_quantities == pytest.approx([0, 10])
+    assert result.total_cost == pytest.approx(100)
+    assert result.order_periods == [2]
+
+
+@pytest.mark.parametrize("method", ["wagner-whitin", "silver-meal"])
+def test_dynamic_lot_sizing_does_not_order_for_all_zero_demand(method):
+    data = DLSInput(demand=[0], ordering_cost=100, holding_cost=1)
+
+    result = DynamicLotSizing(data).solve(method)
+
+    assert result.order_quantities == pytest.approx([0])
+    assert result.total_cost == pytest.approx(0)
+    assert result.order_periods == []
+
+
 @pytest.mark.parametrize(
     "bad_data",
     [
