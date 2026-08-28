@@ -2,3 +2,4 @@ pytest
 numpy
 plotly
 matplotlib
+ruff
