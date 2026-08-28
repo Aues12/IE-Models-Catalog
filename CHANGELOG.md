@@ -16,6 +16,7 @@ The project does not yet use release tags, so entries are grouped by the date of
 * Expanded continuous integration to test Python 3.11 and 3.12.
 * Added Ruff linting, formatting, and continuous-integration checks.
 * Added an English Wagner–Whitin walkthrough and retained the Turkish original with a `_TR` suffix.
+* Added package build metadata while preserving the existing `inventory_models` and `dynamic_models` imports.
 
 ## 2026-08-29
 

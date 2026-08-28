@@ -1,5 +1,1 @@
-pytest
-numpy
-plotly
-matplotlib
-ruff
+-e .[dev]

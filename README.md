@@ -17,17 +17,28 @@ The current test suite contains **58 tests** and was last verified with `pytest`
 
 ## Installation
 
-The repository's development target is Python 3.12. Continuous integration tests Python 3.11 and 3.12. Install the dependencies in a virtual environment:
+The repository's development target is Python 3.12. Continuous integration tests Python 3.11 and 3.12. Install the package in a virtual environment:
 
 ```bash
 git clone https://github.com/Aues12/IE-Models-Catalog.git
 cd IE-Models-Catalog
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install .
 ```
 
-Dependencies are `numpy`, `matplotlib`, `plotly`, and `pytest`.
+The package installs its runtime dependencies: `numpy`, `matplotlib`, and `plotly`. Existing imports remain unchanged:
+
+```python
+from dynamic_models import DynamicLotSizing
+from inventory_models import BasicEOQ
+```
+
+For local development, including tests, builds, and Ruff, install the `dev` extra:
+
+```bash
+pip install -e ".[dev]"
+```
 
 Run the full test suite with:
 
@@ -37,7 +48,7 @@ Run the full test suite with:
 
 ## Code quality with Ruff
 
-Ruff is the project's linter and formatter. It is installed with the other development dependencies through `requirements.txt`.
+Ruff is the project's linter and formatter. It is installed through the `dev` extra.
 
 Check for lint issues and formatting changes without modifying files:
 

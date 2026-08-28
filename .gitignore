@@ -11,6 +11,7 @@ venv/
 # Build outputs
 build/
 dist/
+*.egg-info/
 
 # Editor directories
 .vscode/
