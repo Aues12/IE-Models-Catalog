@@ -1,79 +1,77 @@
 # Wagner-Whitin Algorithm
 
-Sade haliyle **Dynamic Lot Sizing** **(Wagner-Whitin)** akışı:
+Here is a simplified overview of the **Dynamic Lot Sizing (Wagner-Whitin)** workflow:
 
-1. **Girdi al**
-    
-    Talep (demand), kurulum maliyeti (K), elde bulundurma maliyeti (h)
-    
-2. **Periyot sayısını belirle**
-    
-    `T = len(demand)`
-    
-3. **Maliyet fonksiyonunu tanımla**
-    
-    Bir **i** döneminde üretip **j**’ye kadar karşılama maliyeti
-    
-4. **DP tablosunu başlat**
-    
-    `F[t] = 0` ile başla (minimum maliyetler)
-    
-5. **İleri doğru hesapla (DP)**
-    
-    Her t için:
-    
-    - geçmiş i’leri dene
-    - en düşük maliyeti seç
-6. **Optimal maliyeti bul**
-    
-    `F[T]`
-    
-7. **Geri izleme (backtracking)**
-    
-    Hangi dönemlerde sipariş verildiğini çıkar
-    
-8. **Sonucu oluştur**
-    
-    Sipariş miktarları + toplam maliyet
-    
+1. **Read the input**
+
+   Demand, setup cost (`K`), and holding cost (`h`).
+
+2. **Determine the number of periods**
+
+   `T = len(demand)`
+
+3. **Define the cost function**
+
+   The cost of ordering in period `i` and covering demand through period `j`.
+
+4. **Initialize the DP table**
+
+   Begin with `F[t] = 0` for the initial minimum-cost state.
+
+5. **Calculate forward with dynamic programming**
+
+   For each `t`:
+
+   - try earlier ordering periods `i`;
+   - choose the lowest-cost option.
+
+6. **Find the optimal cost**
+
+   `F[T]`
+
+7. **Backtrack**
+
+   Recover the periods in which orders are placed.
+
+8. **Build the result**
+
+   Order quantities plus total cost.
 
 ---
 
-## 1) DP tablosu nasıl görünüyor?
+## 1. What does the DP table look like?
 
-Dynamic Lot Sizing’de genelde iki şey düşünürüz:
+In dynamic lot sizing, we generally consider two values:
 
-- **C(i,j)** → *i döneminde üret, j’ye kadar karşıla* maliyeti
-- **F(t)** → *t’ye kadar minimum toplam maliyet*
+- **`C(i, j)`**: the cost of ordering in period `i` and covering demand through period `j`;
+- **`F(t)`**: the minimum total cost through period `t`.
 
-3 periyotluk örnek (şekil olarak):
+For a three-period example, the shape is:
 
-### C(i,j) maliyet matrisi
+### `C(i, j)` cost matrix
 
-```
+```text
         j=1    j=2    j=3
 i=1     C11    C12    C13
 i=2      -     C22    C23
 i=3      -      -     C33
 ```
 
-- Alt üçgen boş (i > j anlamsız)
-- Örnek yorum:
-    - C12 → 1. dönemde üretip 1 ve 2’yi karşıla
-    - C13 → 1’den üret, 3’e kadar stokla
+- The lower triangle is empty because `i > j` is not meaningful.
+- Example interpretations:
+  - `C12`: order in period 1 and cover periods 1 and 2;
+  - `C13`: order in period 1 and hold inventory through period 3.
 
----
+### `F(t)` DP vector
 
-### F(t) (DP vektörü)
-
-```
+```text
 t:    0    1    2    3
 F:    0   F1   F2   F3
 ```
 
-Ve hesap:
+The calculations are:
 
-```
+```text
 F(1) = min{ F(0) + C(1,1) }
 
 F(2) = min{
@@ -90,82 +88,70 @@ F(3) = min{
 
 ---
 
-## 2) İleri hesaplama vs geri izleme
+## 2. Forward calculation versus backtracking
 
-### ➤ İleri hesaplama (forward / DP)
+### Forward calculation (DP)
 
-- Amaç: **minimum maliyeti bulmak**
-- Yön: 1 → T
-- Ne yapar:
-    - Her t için en iyi maliyeti hesaplar
-    - `F(t)` değerlerini doldurur
+- **Goal:** find the minimum cost.
+- **Direction:** `1 → T`.
+- **What it does:**
+  - calculates the best cost for each `t`;
+  - fills the `F(t)` values.
 
-👉 “En ucuz planın maliyeti ne?”
+It answers: “What is the cost of the cheapest plan?”
 
----
+### Backtracking
 
-### ➤ Geri izleme (backtracking)
+- **Goal:** determine how that cost was achieved.
+- **Direction:** `T → 0`.
+- **What it does:**
+  - follows the selected ordering period `i`;
+  - recovers the order periods.
 
-- Amaç: **o maliyete nasıl ulaştığını bulmak**
-- Yön: T → 0
-- Ne yapar:
-    - Hangi i seçildi → onu takip eder
-    - Sipariş verilen dönemleri çıkarır
+It answers: “In which periods should I order?”
 
-👉 “Hangi dönemlerde üretmeliyim?”
+## Summary
 
----
-
-## Özet
-
-- **C(i,j)** → lokal karar maliyetleri
-- **F(t)** → global optimum maliyet
-- **Forward** → hesaplar
-- **Backward** → planı çıkarır
+- `C(i, j)`: local decision costs.
+- `F(t)`: globally optimal cost.
+- Forward pass: calculates costs.
+- Backward pass: recovers the plan.
 
 ---
 
-## Örnek veri
+## Example data
 
-Küçük ve net bir örnek yapalım.
+Use a small, clear example:
 
-- Talep: `[10, 20, 30]`
-- Kurulum maliyeti: `K = 100`
-- Elde bulundurma maliyeti: `h = 1` (birim / dönem)
+- Demand: `[10, 20, 30]`
+- Setup cost: `K = 100`
+- Holding cost: `h = 1` per unit per period
 
----
+## 1. `C(i, j)` matrix
 
-## 1) C(i,j) matrisi
+The logic is: if an order placed in `i` covers demand through `j`, every unit held for a future period incurs time × `h`.
 
-Mantık: i’de üretip j’ye kadar stoklarsan →
+### Calculations
 
-stokta bekleyen her birim için süre × h ödersin.
+- `C11 = 100`
+- `C12 = 100 + (20 × 1) = 120`
+- `C13 = 100 + (20 × 1 + 30 × 2) = 100 + 20 + 60 = 180`
+- `C22 = 100`
+- `C23 = 100 + (30 × 1) = 130`
+- `C33 = 100`
 
-### Hesaplar:
+### Table
 
-- **C11** = 100
-- **C12** = 100 + (20 × 1) = 120
-- **C13** = 100 + (20×1 + 30×2) = 100 + 20 + 60 = 180
-- **C22** = 100
-- **C23** = 100 + (30 × 1) = 130
-- **C33** = 100
-
----
-
-### Tablo:
-
-```
+```text
         j=1    j=2    j=3
 i=1     100    120    180
 i=2      -     100    130
 i=3      -      -     100
 ```
 
----
+## 2. Forward calculation
 
-## 2) Forward (DP hesaplama)
-
-```
+```text
 F(0) = 0
 
 F(1) = F(0) + C(1,1) = 100
@@ -182,35 +168,25 @@ F(3) = min(
 ) = 180
 ```
 
-👉 **Minimum toplam maliyet = 180**
+**Minimum total cost = 180**
 
----
+## 3. Backtracking
 
-## 3) Backtracking (geri izleme)
+`F(3) = 180` comes from:
 
-F(3) = **180**, bu şu seçenekten geldi:
-
-```
+```text
 F(0) + C(1,3)
 ```
 
-Yani:
+Therefore, order in period 1 and cover demand through period 3.
 
-👉 **1. dönemde üret, 3’e kadar karşıla**
+## 4. Final decision
 
----
+- Place an order only in period 1.
+- Quantity: `10 + 20 + 30 = 60`.
+- Do not place orders in the other periods.
 
-## 4) Nihai karar
+## Intuition
 
-- Sipariş: sadece **1. dönemde**
-- Miktar: `10 + 20 + 30 = 60`
-- Diğer dönemlerde üretim yok
-
----
-
-## Kısa sezgi
-
-- Kurulum maliyeti yüksek → az sipariş ver
-- Holding maliyeti düşük → stoklamak mantıklı
-
----
+- High setup cost means fewer orders are preferable.
+- Low holding cost makes carrying inventory more attractive.

@@ -13,11 +13,11 @@ The implemented, tested scope is:
 | Inventory profiles | `inventory_level(t)` and `graph()` on every EOQ-family model |
 | Dynamic lot sizing | Exact Wagner–Whitin and Silver–Meal heuristic |
 
-The current test suite contains **51 tests** and was last verified with `pytest` successfully completing all of them.
+The current test suite contains **58 tests** and was last verified with `pytest` successfully completing all of them.
 
 ## Installation
 
-The repository's development target is Python 3.12. Install the dependencies in a virtual environment:
+The repository's development target is Python 3.12. Continuous integration tests Python 3.11 and 3.12. Install the dependencies in a virtual environment:
 
 ```bash
 git clone https://github.com/Aues12/IE-Models-Catalog.git
@@ -34,6 +34,26 @@ Run the full test suite with:
 ```bash
 .venv/bin/python -m pytest tests/ -v
 ```
+
+## Code quality with Ruff
+
+Ruff is the project's linter and formatter. It is installed with the other development dependencies through `requirements.txt`.
+
+Check for lint issues and formatting changes without modifying files:
+
+```bash
+ruff check .
+ruff format --check .
+```
+
+Apply Ruff's safe automatic fixes and format the code:
+
+```bash
+ruff check . --fix
+ruff format .
+```
+
+The configuration in [`pyproject.toml`](pyproject.toml) targets Python 3.11 syntax and checks import order plus core error and undefined-name rules. GitHub Actions runs the non-modifying commands on every relevant push and pull request.
 
 ## Static inventory models
 
@@ -146,8 +166,8 @@ data = DLSInput(
 result = DynamicLotSizing(data).solve(method="wagner-whitin")
 
 print(result.order_quantities)  # [60, 0, 0]
-print(result.total_cost)         # 180
-print(result.order_periods)      # [1]
+print(result.total_cost)  # 180
+print(result.order_periods)  # [1]
 ```
 
 Available methods are:
@@ -175,6 +195,7 @@ Further explanations and derivations are available under [`docs/`](docs/):
 * [EOQ model guide](docs/EOQ-Model-docs.md)
 * [EOQ mathematics](docs/EOQ-Math-docs.md)
 * [Dynamic lot sizing mathematics](docs/DP-Math-docs.md)
-* [Wagner–Whitin walkthrough](docs/Wagner-Whitin_Algorithm.md)
+* [Wagner–Whitin walkthrough (English)](docs/Wagner-Whitin_Algorithm.md)
+* [Wagner–Whitin walkthrough (Turkish)](docs/Wagner-Whitin_Algorithm_TR.md)
 
 The original project rationale is retained in [PROPOSAL.md](PROPOSAL.md). Contribution policy is described in [CONTRIBUTING.md](CONTRIBUTING.md).
