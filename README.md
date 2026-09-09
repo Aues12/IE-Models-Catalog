@@ -1,171 +1,78 @@
 # IE Models Catalog
 
-A small Python catalog of inventory-management models for industrial engineering. It currently provides four EOQ-family models and two dynamic lot-sizing methods, together with mathematical notes and an automated test suite.
+Python inventory models for industrial engineering: calculate order quantities,
+plan orders across periods, and inspect inventory costs.
 
-## Current status
+The catalog includes four EOQ-family models, two dynamic lot-sizing methods,
+inventory plots, and mathematical walkthroughs. It is intended for learning and
+analyzing deterministic inventory scenarios.
 
-The implemented, tested scope is:
-
-| Area | Models and methods |
-| --- | --- |
-| Static inventory | `BasicEOQ`, `EPQ`, `DiscountEOQ`, `BackorderEOQ` |
-| Reorder point | `calculate_reorder_point()` on every EOQ-family model |
-| Inventory profiles | `inventory_level(t)` and `graph()` on every EOQ-family model |
-| Dynamic lot sizing | Exact Wagner–Whitin and Silver–Meal heuristic |
-
-The test suite includes regression checks, shared result-contract checks, and independent optimality checks against exhaustive small planning problems.
+[Quick start](#quick-start) · [Models](#choose-a-model) · [API reference](docs/API_REFERENCE.md) · [Development](docs/DEVELOPMENT.md)
 
 ## Installation
 
-The repository's development target is Python 3.12. Continuous integration tests Python 3.11 and 3.12. Install the package in a virtual environment:
+Requires **Python 3.11 or later**. CI tests Python 3.11 and 3.12.
 
 ```bash
 git clone https://github.com/Aues12/IE-Models-Catalog.git
 cd IE-Models-Catalog
 python3 -m venv .venv
 source .venv/bin/activate
-pip install .
+python -m pip install .
 ```
 
-The package installs its runtime dependencies: `numpy`, `matplotlib`, and `plotly`. Existing imports remain unchanged:
+On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`.
+Installation includes NumPy, Matplotlib, and Plotly.
 
-```python
-from dynamic_models import DynamicLotSizing
-from inventory_models import BasicEOQ
-```
+## Quick start
 
-For local development, including tests, builds, and Ruff, install the `dev` extra:
-
-```bash
-pip install -e ".[dev]"
-```
-
-Run the full test suite with:
-
-```bash
-.venv/bin/python -m pytest tests/ -v
-```
-
-## Code quality with Ruff
-
-Ruff is the project's linter and formatter. It is installed through the `dev` extra.
-
-Check for lint issues and formatting changes without modifying files:
-
-```bash
-ruff check .
-ruff format --check .
-```
-
-Apply Ruff's safe automatic fixes and format the code:
-
-```bash
-ruff check . --fix
-ruff format .
-```
-
-The configuration in [`pyproject.toml`](pyproject.toml) targets Python 3.11 syntax and checks import order plus core error and undefined-name rules. GitHub Actions runs the non-modifying commands on every relevant push and pull request.
-
-## Static inventory models
-
-All EOQ-family constructors use `price`, `demand_rate`, `ordering_cost`, and an optional `holding_rate` (default `0.25`). Holding cost is calculated as `price * holding_rate`. Core values must be finite, positive real numbers. Non-finite values and booleans are rejected. Demand and holding costs must refer to the same time period.
-
-### Basic EOQ
-
-`BasicEOQ` implements the classic economic order quantity model.
+Suppose an item costs 50 per unit, annual demand is 1,200 units, and each order
+costs 75 to place. Annual holding cost is 20% of the item's price.
 
 ```python
 from inventory_models import BasicEOQ
 
 model = BasicEOQ(
-    price=50.0,
+    price=50,
     demand_rate=1200,
     ordering_cost=75,
     holding_rate=0.20,
 )
+result = model.solve()
 
-quantity = model.calculate_eoq()
-reorder_point = model.calculate_reorder_point(
-    lead_time=10,
-    safety_stock=20,
-)
-
-print(quantity)
-print(reorder_point)
+print(f"Order quantity: {result.order_quantity:.2f} units")
+print(f"Ordering + holding cost: {result.costs.relevant_cost:.2f} per year")
+print(f"Total cost including purchases: {result.total_cost:.2f} per year")
 ```
-
-`calculate_reorder_point()` uses:
 
 ```text
-reorder point = (demand_rate / days_of_operation) * lead_time + safety_stock
+Order quantity: 134.16 units
+Ordering + holding cost: 1341.64 per year
+Total cost including purchases: 61341.64 per year
 ```
 
-`lead_time` and `safety_stock` cannot be negative; `days_of_operation` defaults to `365` and must be positive.
+Under the model's assumptions, ordering approximately 134.16 units per cycle
+minimizes annual ordering and holding costs. The optimum is a continuous
+quantity; the library does not enforce whole-unit or pack-size constraints.
 
-### EPQ
+## Choose a model
 
-`EPQ` models gradual replenishment during production. It adds `production_rate`, which must be greater than `demand_rate`.
+| Your situation | Model or method | What it accounts for |
+| --- | --- | --- |
+| Constant demand, replenishment arrives at once | `BasicEOQ` | Ordering and holding costs |
+| Stock builds gradually during production | `EPQ` | Production rate greater than demand |
+| Larger orders receive a lower unit price | `DiscountEOQ` | All-units quantity discounts |
+| Planned shortages can be filled later | `BackorderEOQ` | Holding and backorder costs |
+| Known demand varies by period; you need an optimal plan | Wagner–Whitin | Exact dynamic lot sizing |
+| Known demand varies by period; you want a heuristic plan | Silver–Meal | Average cost per covered period; optimality is not guaranteed |
 
-```python
-from inventory_models import EPQ
+All four EOQ-family models provide `solve()`, `calculate_reorder_point()`,
+`inventory_level()`, and `graph()`. See the [API reference](docs/API_REFERENCE.md)
+for constructors and examples of each variant.
 
-model = EPQ(
-    price=50.0,
-    demand_rate=1000,
-    ordering_cost=75,
-    production_rate=1200,
-    holding_rate=0.20,
-)
+## Plan orders across periods
 
-print(model.calculate_eoq())
-```
-
-### Discount EOQ
-
-`DiscountEOQ` evaluates all supplied quantity-discount tiers and returns the order quantity with the lowest annual purchase, ordering, and holding cost. Supply `discount_rates` as `{minimum_quantity: discount_rate}`; discount rates must be in the interval `[0, 1)` and must not decrease as quantity increases. Thresholds must be finite and non-negative. Quantities are continuous: tiers are `[minimum_quantity, next_minimum_quantity)`, and the selected all-units price applies to the entire order. Integer order quantities and increasing-price tiers are not supported.
-
-```python
-from inventory_models import DiscountEOQ
-
-model = DiscountEOQ(
-    price=100,
-    demand_rate=1000,
-    ordering_cost=50,
-    holding_rate=0.20,
-    discount_rates={0: 0.0, 100: 0.05, 200: 0.10},
-)
-
-print(model.calculate_eoq())
-```
-
-### EOQ with planned backorders
-
-`BackorderEOQ` permits planned shortages. It adds a positive `shortage_cost` parameter. `calculate_cycle_metrics()` returns a dictionary containing `Q_opt`, `S_max`, `B_max`, and `TotalCost`.
-
-```python
-from inventory_models import BackorderEOQ
-
-model = BackorderEOQ(
-    price=100,
-    demand_rate=500,
-    ordering_cost=200,
-    shortage_cost=50,
-    holding_rate=0.2,
-)
-
-print(model.calculate_eoq())
-print(model.calculate_cycle_metrics())
-```
-
-## Dynamic lot sizing
-
-`DynamicLotSizing` turns a time-phased demand vector into an order plan. `solve()` returns a `DLSResult` with:
-
-* `order_quantities`: quantity ordered in each period
-* `total_cost`: ordering plus holding cost
-* `order_periods`: one-based periods in which orders are placed
-* `inventory_levels`: inventory remaining at the end of each period
-* `costs`: shared `CostBreakdown` with ordering and holding components
+For demand of 10, 20, and 30 units over three periods:
 
 ```python
 from dynamic_models import DLSInput, DynamicLotSizing
@@ -173,68 +80,92 @@ from dynamic_models import DLSInput, DynamicLotSizing
 data = DLSInput(
     demand=[10, 20, 30],
     ordering_cost=100,
-    holding_cost=1,
+    holding_cost=1,  # Cost per unit held at each period end.
 )
-
 result = DynamicLotSizing(data).solve(method="wagner-whitin")
 
-print(result.order_quantities)  # [60, 0, 0]
-print(result.total_cost)  # 180
-print(result.order_periods)  # [1]
+print(result.order_quantities)  # [60.0, 0, 0]
+print(result.inventory_levels)  # [50.0, 30.0, 0.0]
+print(result.total_cost)  # 180.0
 ```
 
-Available methods are:
+The plan orders all 60 units in period 1. One order costs 100, and carrying 50
+then 30 units costs another 80. To use Silver–Meal, set `method="silver-meal"`.
+Both methods support starting stock through `DLSInput(initial_inventory=...)`
+when supplied alongside demand and costs.
 
-* `method="wagner-whitin"` — exact dynamic-programming solution.
-* `method="silver-meal"` — feasible heuristic; it is not guaranteed to be optimal.
+## Understand the results
 
-Demand must be a non-empty list or tuple of finite, non-negative real values. Ordering cost, holding cost, and initial inventory must also be finite and non-negative. Both methods consume `initial_inventory` before ordering for unmet demand, without modifying the input.
+Both model families expose `result.costs`, a breakdown of purchase, ordering,
+holding, and shortage costs.
 
-Holding cost is charged on actual inventory at every period end, including unused initial inventory and stock remaining at the horizon's end. Initial inventory has no acquisition cost in this model. For example, `DLSInput([10, 0], 100, 1, initial_inventory=15)` produces no orders, end inventories `[5, 5]`, and total holding cost `10`.
+- **EOQ models:** `result.total_cost` includes purchases and covers one demand
+  period. If demand is annual, costs are annual and `result.cycle_time` is in years.
+- **Dynamic models:** `result.total_cost` covers ordering and holding over the
+  entire supplied horizon. Holding costs include any initial stock remaining at
+  each period end.
+- **Time units:** demand and holding costs must use the same period. Reorder
+  points and inventory profiles use operating days, with 365 days per period by
+  default.
 
-## Common results and costs
+Align time horizons and included cost components before comparing totals.
+Detailed fields, validation rules, and compatibility notes are in the
+[API reference](docs/API_REFERENCE.md#common-results-and-costs).
 
-Every EOQ-family model now provides `solve() -> EOQResult` and `calculate_costs(quantity) -> CostBreakdown`. Existing `calculate_eoq()` calls still return a number.
+To view a stock profile, call `model.graph()` on an EOQ-family model. Plotly is
+the default; use `model.graph(renderer="matplotlib")` for Matplotlib.
 
-```python
-from inventory_models import BasicEOQ
+## Explore comparisons and sensitivity
 
-model = BasicEOQ(price=50, demand_rate=1200, ordering_cost=75, holding_rate=0.20)
-result = model.solve()
-print(result.order_quantity)
-print(result.cycle_time)  # Fraction of one demand period; years for annual demand.
-print(result.max_inventory, result.max_backorder)
-print(result.unit_price)
-print(result.costs.ordering, result.costs.holding)
-print(result.costs.relevant_cost)  # Ordering + holding + shortage.
-print(result.total_cost)  # Purchase + ordering + holding + shortage.
+Run the examples from the repository root after installation:
+
+```bash
+python -m examples.compare_methods
+python -m examples.eoq_sensitivity
 ```
 
-`CostBreakdown` (importable from `model_common`) is shared by EOQ and dynamic results. It contains `purchase`, `ordering`, `holding`, and `shortage`, plus computed `relevant_cost` and `total_cost` properties. EOQ costs cover one demand period; dynamic costs cover the entire supplied horizon. These totals are comparable only after aligning horizons and included cost components.
+The first compares Wagner–Whitin and Silver–Meal on three shared demand scenarios.
+The second changes EOQ demand, ordering cost, and holding rate one at a time,
+showing the new optimum and the extra cost of keeping the original order quantity.
+Both save interactive HTML reports and numeric JSON results in `examples/output/`.
+The reports open locally without an internet connection.
 
-EOQ `total_cost` includes purchase cost for every variant. For backward compatibility, `BackorderEOQ.calculate_cycle_metrics()["TotalCost"]` continues to exclude purchase cost and equals `solve().costs.relevant_cost`. Dynamic purchase and shortage components are zero because those costs are not modeled. The legacy `DiscountEOQ.calculate_total_cost(quantity, price)` accepts an explicit price; use `calculate_costs(quantity)` to select the applicable tier automatically.
-
-`holding_cost` is derived from `price * holding_rate`; configure those inputs rather than assigning a separate holding cost. For a new scenario, constructing a new model is recommended.
-
-## Inventory profiles and plots
-
-EOQ-family models provide `inventory_level(t, days_of_operation=365)` where `t` is a scalar or array of non-negative elapsed operating days. Use the same `days_of_operation` in reorder-point and profile calculations. Profiles calculate the current optimum on each call, and `analysis_mode=True` prints explanations while still returning the same numeric result. The default `graph()` displays a 365-day profile.
-
-`graph()` renders an inventory profile with Plotly by default, or Matplotlib when requested:
-
-```python
-model.graph(renderer="plotly")
-model.graph(renderer="matplotlib")
-```
+See the [examples guide](examples/README.md) for expected results and interpretation.
 
 ## Documentation
 
-Further explanations and derivations are available under [`docs/`](docs/):
+| Guide | Contents |
+| --- | --- |
+| [API reference](docs/API_REFERENCE.md) | Model examples, parameters, results, units, and cost conventions |
+| [EOQ model guide](docs/EOQ-Model-docs.md) | Background on the EOQ family |
+| [EOQ mathematics](docs/EOQ-Math-docs.md) | Formulas and derivations |
+| [Dynamic lot-sizing mathematics](docs/DP-Math-docs.md) | Dynamic programming foundations |
+| [Wagner–Whitin walkthrough](docs/Wagner-Whitin_Algorithm.md) | Step-by-step algorithm explanation |
+| [Wagner–Whitin Türkçe anlatım](docs/Wagner-Whitin_Algorithm_TR.md) | Turkish walkthrough |
+| [Development guide](docs/DEVELOPMENT.md) | Environment setup, tests, Ruff, builds, and CI |
 
-* [EOQ model guide](docs/EOQ-Model-docs.md)
-* [EOQ mathematics](docs/EOQ-Math-docs.md)
-* [Dynamic lot sizing mathematics](docs/DP-Math-docs.md)
-* [Wagner–Whitin walkthrough (English)](docs/Wagner-Whitin_Algorithm.md)
-* [Wagner–Whitin walkthrough (Turkish)](docs/Wagner-Whitin_Algorithm_TR.md)
+The [original proposal](PROPOSAL.md) explains the project's motivation.
+Release history is recorded in the [changelog](CHANGELOG.md).
 
-The original project rationale is retained in [PROPOSAL.md](PROPOSAL.md). Contribution policy is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+## Development and feedback
+
+With the virtual environment active:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest tests/ -v
+ruff check .
+ruff format --check .
+```
+
+Tests include regressions and independent optimality checks. See the
+[development guide](docs/DEVELOPMENT.md) for the full workflow.
+
+Bug reports and documentation feedback are welcome through
+[GitHub Issues](https://github.com/Aues12/IE-Models-Catalog/issues).
+External pull requests are currently not accepted; see the
+[contribution policy](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE).

@@ -16,3 +16,6 @@ dist/
 # Editor directories
 .vscode/
 .idea/
+
+# Generated example reports
+examples/output/
