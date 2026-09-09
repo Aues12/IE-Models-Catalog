@@ -70,7 +70,7 @@ jobs:
         run: python scripts/sync_agent_metadata.py --check
 
       - name: Run Pytest
-        run: pytest
+        run: python -m pytest
 
   package:
     runs-on: ubuntu-latest

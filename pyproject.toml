@@ -55,3 +55,7 @@ select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.setuptools.package-data]
 ie_models_agent = ["contract.json", "schemas/*.json"]
+
+[tool.pytest.ini_options]
+# Tests also import repository maintenance scripts, which are not wheel modules.
+pythonpath = ["."]
