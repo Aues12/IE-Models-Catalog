@@ -49,6 +49,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Check agent contracts
+        run: python scripts/sync_agent_metadata.py --check
+
       - name: Run Pytest
         run: pytest
 
@@ -74,4 +77,5 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           cd /tmp
-          python -c "from dynamic_models import DynamicLotSizing; from inventory_models import BasicEOQ"
+          python -c "from dynamic_models import DynamicLotSizing; from inventory_models import BasicEOQ; from ie_models_agent import run; assert run({'operation': 'list_models', 'params': {}})['success']"
+          printf '%s' '{"operation":"list_models","params":{}}' | ie-models-agent

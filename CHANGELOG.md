@@ -6,7 +6,22 @@ The project did not historically use release tags. Versions through `0.4.1` were
 
 ## Unreleased
 
+### Added
+
+* Added optional EOQ minimum/maximum quantities, integer orders and pack multiples across all five variants.
+* Added IncrementalDiscountEOQ with marginal-band billing and average-acquisition-price holding.
+* Added period-varying dynamic costs, fixed lead time, explicit release/receipt results, and infeasible-plan errors.
+* Added operational model guides, runnable comparisons, exhaustive release-schedule and independent lot-billing checks.
+
+* Added the version-1 JSON agent interface with discovery, EOQ calculations, and dynamic solving/comparison, available as `python -m ie_models_agent` and `ie-models-agent`.
+* Added a canonical `SKILL.yaml`, generated tool/model registries and JSON schemas, an invocation guide, and local architecture/contract standards.
+* Added strict request/response validation with `jsonschema`, bounded inputs, structured errors, executable request examples, and contract/registry drift checks in CI.
+* Included agent metadata and schemas in the wheel and the integration documentation in source distributions.
+
+
 ### Changed
+
+* Reduced Wagner–Whitin cost-matrix preparation to quadratic time and Silver–Meal cost accumulation to linear time.
 
 * Expanded continuous integration to test Python 3.11 and 3.12.
 * Added Ruff linting, formatting, and continuous-integration checks.

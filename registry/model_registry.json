@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "models": [
+    {
+      "id": "basic_eoq",
+      "family": "eoq",
+      "module": "inventory_models",
+      "class": "BasicEOQ",
+      "guide": "docs/models/basic_eoq.md",
+      "guarantee": "exact_under_assumptions",
+      "input_schema": "#/$defs/input_basic_eoq"
+    },
+    {
+      "id": "epq",
+      "family": "eoq",
+      "module": "inventory_models",
+      "class": "EPQ",
+      "guide": "docs/models/epq.md",
+      "guarantee": "exact_under_assumptions",
+      "input_schema": "#/$defs/input_epq"
+    },
+    {
+      "id": "discount_eoq",
+      "family": "eoq",
+      "module": "inventory_models",
+      "class": "DiscountEOQ",
+      "guide": "docs/models/discount_eoq.md",
+      "guarantee": "exact_under_assumptions",
+      "input_schema": "#/$defs/input_discount_eoq"
+    },
+    {
+      "id": "backorder_eoq",
+      "family": "eoq",
+      "module": "inventory_models",
+      "class": "BackorderEOQ",
+      "guide": "docs/models/backorder_eoq.md",
+      "guarantee": "exact_under_assumptions",
+      "input_schema": "#/$defs/input_backorder_eoq"
+    },
+    {
+      "id": "incremental_discount_eoq",
+      "family": "eoq",
+      "module": "inventory_models",
+      "class": "IncrementalDiscountEOQ",
+      "guide": "docs/models/incremental_discount_eoq.md",
+      "guarantee": "exact_under_assumptions",
+      "input_schema": "#/$defs/input_incremental_discount_eoq"
+    },
+    {
+      "id": "wagner-whitin",
+      "family": "dynamic",
+      "module": "dynamic_models",
+      "class": "DynamicLotSizing",
+      "guide": "docs/models/wagner_whitin.md",
+      "guarantee": "exact_under_assumptions"
+    },
+    {
+      "id": "silver-meal",
+      "family": "dynamic",
+      "module": "dynamic_models",
+      "class": "DynamicLotSizing",
+      "guide": "docs/models/silver_meal.md",
+      "guarantee": "heuristic"
+    }
+  ]
+}

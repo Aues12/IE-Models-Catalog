@@ -9,9 +9,9 @@ Find a minimum-cost ordering plan when demand is known but varies from period to
 ## Assumptions
 
 - Known demand over a finite horizon; one item and equal-duration periods.
-- Orders are available before demand in their order period: no explicit delivery delay.
-- Constant, non-negative setup and holding costs; unlimited ordering and storage capacity.
-- All demand must be met; initial inventory is available before period 1.
+- Fixed integer lead time; orders arrive before demand in their receipt period.
+- Non-negative setup and holding costs, constant or specified per period; unlimited ordering and storage capacity.
+- All demand must be met; initial inventory must cover demand before the first possible receipt. No pre-horizon releases or pipeline orders.
 
 ## Inputs and units
 
@@ -20,13 +20,13 @@ Use the [shared dynamic inputs and units](conventions.md#dynamic-lot-sizing). Pe
 ## Mathematical definition
 
 First consume initial stock against successive demands to obtain net demands $d'_t$; see [initial-stock accounting](conventions.md#dynamic-lot-sizing).
-For zero remaining initial stock and an order at $j$ covering through $t$, define:
+For a receipt at $j$ (released at $j-L$) covering through $t$, define:
 
-$$A(j,t)=K+h\sum_{k=j}^{t}(k-j)d'_k.$$
+$$A(j,t)=K_{j-L}+\sum_{k=j}^{t}d'_k\sum_{u=j}^{k-1}h_u.$$
 
 With $F(0)=0$, for a positive net-demand period:
 
-$$F(t)=\min_{1\le j\le t}\{F(j-1)+A(j,t)\}.$$
+$$F(t)=\min_{L+1\le j\le t}\{F(j-1)+A(j,t)\}.$$
 
 When $d'_t=0$, the implementation uses $F(t)=F(t-1)$ and a no-order backtracking transition.
 Backtracking recovers order starts; each order covers net demand until the next start.
@@ -61,12 +61,16 @@ print(f"Total cost: {result.total_cost:.2f}")
 ```
 
 ```text
-Orders: [60.0, 0, 0]
+Orders: [60.0, 0.0, 0.0]
 Periods: [1]
 Total cost: 180.00
 ```
 
 ## Verification
+
+[Operational tests](../../tests/test_practical_models.py) independently enumerate
+release schedules with varying costs, lead times and initial stock, then reconstruct
+receipt timing, stock balances and cost.
 
 The [independent schedule tests](../../tests/test_independent_optimality.py)
 enumerate feasible integer orders for 2,187 small scenarios per method and
@@ -77,8 +81,8 @@ Wagner–Whitin must match the enumerated minimum cost. Tests separately check n
 
 ## Limitations
 
-Optimality applies to the stated uncapacitated deterministic problem. Capacity, minimum lots, lead times, and period-varying costs are not supported.
-The recurrence takes O(T²) work, but current cost-matrix preparation uses three nested loops: end-to-end time is O(T³), with O(T²) matrix storage. Equal-cost plans may have different order periods.
+Optimality applies to the stated uncapacitated deterministic problem. Capacity, minimum lots, pack multiples, variable lead times and pipeline orders are not supported.
+Cost-matrix preparation and the recurrence each take O(T²) time, with O(T²) storage. Equal-cost plans may have different order periods. Receipt starts may fall in zero-net-demand periods when an earlier setup is cheaper.
 
 ## References
 

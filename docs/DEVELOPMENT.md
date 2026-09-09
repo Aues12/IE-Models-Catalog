@@ -65,3 +65,10 @@ targeting `core`.
 
 Bug reports and documentation feedback are welcome. External pull requests are
 currently not accepted; see [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Agent contracts
+
+Run `python scripts/sync_agent_metadata.py --check` to detect contract/registry drift.
+After changing `SKILL.yaml`, regenerate with `python scripts/sync_agent_metadata.py`.
+The pytest suite includes adapter, subprocess, schema, and registry checks.
+See [contract management](../standards/CONTRACTS.md) for the full change workflow.

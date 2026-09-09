@@ -11,6 +11,7 @@ on the condition you want to introduce.
 | [Basic EOQ](basic_eoq.md) | Repeating orders with constant demand | Closed-form optimum |
 | [EPQ](epq.md) | Gradual production while demand consumes stock | Closed-form optimum |
 | [Discount EOQ](discount_eoq.md) | Lower all-units prices at quantity thresholds | Feasible tier-candidate comparison |
+| [Incremental Discount EOQ](incremental_discount_eoq.md) | Marginal pricing within quantity bands | Feasible band-candidate comparison |
 | [Backorder EOQ](backorder_eoq.md) | Planned waiting for later replenishment | Closed-form quantity and backlog split |
 | [Wagner–Whitin](wagner_whitin.md) | Known, time-varying demand | Exact dynamic programming |
 | [Silver–Meal](silver_meal.md) | Same dynamic problem with a local decision rule | Heuristic; no optimality guarantee |
@@ -18,6 +19,9 @@ on the condition you want to introduce.
 Wagner–Whitin and Silver–Meal are two methods for the same dynamic problem,
 not two different demand models. Their separate guides explain how their
 solution rules and guarantees differ.
+
+All EOQ variants support optional [operational order constraints](order_constraints.md).
+Dynamic methods support period cost vectors and fixed delivery lead time.
 
 Read [shared conventions](conventions.md) for symbols, units, time horizons,
 initial-stock accounting, and result fields. For runnable comparisons and

@@ -1,0 +1,956 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "input_basic_eoq": {
+      "type": "object",
+      "properties": {
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "demand_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ordering_cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "holding_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.25
+        }
+      },
+      "required": [
+        "price",
+        "demand_rate",
+        "ordering_cost"
+      ],
+      "additionalProperties": false
+    },
+    "input_epq": {
+      "type": "object",
+      "properties": {
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "demand_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ordering_cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "holding_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.25
+        },
+        "production_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "price",
+        "demand_rate",
+        "ordering_cost",
+        "production_rate"
+      ],
+      "additionalProperties": false
+    },
+    "input_discount_eoq": {
+      "type": "object",
+      "properties": {
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "demand_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ordering_cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "holding_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.25
+        },
+        "discount_tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "minimum_quantity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "discount_rate": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMaximum": 1
+              }
+            },
+            "required": [
+              "minimum_quantity",
+              "discount_rate"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 256,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "price",
+        "demand_rate",
+        "ordering_cost",
+        "discount_tiers"
+      ],
+      "additionalProperties": false
+    },
+    "input_backorder_eoq": {
+      "type": "object",
+      "properties": {
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "demand_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ordering_cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "holding_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.25
+        },
+        "shortage_cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "price",
+        "demand_rate",
+        "ordering_cost",
+        "shortage_cost"
+      ],
+      "additionalProperties": false
+    },
+    "costs": {
+      "type": "object",
+      "properties": {
+        "purchase": {
+          "type": "number",
+          "minimum": 0
+        },
+        "ordering": {
+          "type": "number",
+          "minimum": 0
+        },
+        "holding": {
+          "type": "number",
+          "minimum": 0
+        },
+        "shortage": {
+          "type": "number",
+          "minimum": 0
+        },
+        "relevant_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total_cost": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "purchase",
+        "ordering",
+        "holding",
+        "shortage",
+        "relevant_cost",
+        "total_cost"
+      ],
+      "additionalProperties": false
+    },
+    "annual_basis": {
+      "type": "object",
+      "properties": {
+        "horizon": {
+          "const": "year"
+        },
+        "purchase_included": {
+          "const": true
+        },
+        "currency": {
+          "const": "caller_defined"
+        }
+      },
+      "required": [
+        "horizon",
+        "purchase_included",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "dynamic_basis": {
+      "type": "object",
+      "properties": {
+        "horizon": {
+          "const": "input_horizon"
+        },
+        "periods": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "period_unit": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week",
+            "month",
+            "year",
+            "period"
+          ],
+          "default": "period"
+        },
+        "purchase_included": {
+          "const": false
+        },
+        "currency": {
+          "const": "caller_defined"
+        }
+      },
+      "required": [
+        "horizon",
+        "periods",
+        "period_unit",
+        "purchase_included",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "enum": [
+            "wagner-whitin",
+            "silver-meal"
+          ]
+        },
+        "guarantee": {
+          "enum": [
+            "exact_under_assumptions",
+            "heuristic"
+          ]
+        },
+        "order_quantities": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "maxItems": 120
+        },
+        "order_periods": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 120
+          },
+          "maxItems": 120
+        },
+        "inventory_levels": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "maxItems": 120
+        },
+        "costs": {
+          "$ref": "#/$defs/costs"
+        },
+        "total_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cost_basis": {
+          "$ref": "#/$defs/dynamic_basis"
+        },
+        "receipt_quantities": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "maxItems": 120
+        },
+        "receipt_periods": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 120
+          },
+          "maxItems": 120
+        }
+      },
+      "required": [
+        "method",
+        "guarantee",
+        "order_quantities",
+        "order_periods",
+        "inventory_levels",
+        "costs",
+        "total_cost",
+        "cost_basis",
+        "receipt_quantities",
+        "receipt_periods"
+      ],
+      "additionalProperties": false
+    },
+    "order_constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_quantity": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "max_quantity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "default": null
+        },
+        "integer": {
+          "type": "boolean",
+          "default": false
+        },
+        "order_multiple": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "default": null
+        }
+      }
+    },
+    "input_incremental_discount_eoq": {
+      "type": "object",
+      "properties": {
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "demand_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ordering_cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "holding_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.25
+        },
+        "discount_tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "minimum_quantity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "discount_rate": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMaximum": 1
+              }
+            },
+            "required": [
+              "minimum_quantity",
+              "discount_rate"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 256,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "price",
+        "demand_rate",
+        "ordering_cost",
+        "discount_tiers"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "models": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "max_request_bytes": {
+                  "const": 1048576
+                },
+                "max_periods": {
+                  "const": 120
+                },
+                "max_profile_points": {
+                  "const": 1000
+                },
+                "max_discount_tiers": {
+                  "const": 256
+                }
+              },
+              "required": [
+                "max_request_bytes",
+                "max_periods",
+                "max_profile_points",
+                "max_discount_tiers"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "models",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "list_models"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "enum": [
+                "basic_eoq",
+                "epq",
+                "discount_eoq",
+                "backorder_eoq",
+                "incremental_discount_eoq"
+              ]
+            },
+            "guarantee": {
+              "const": "exact_under_assumptions"
+            },
+            "order_quantity": {
+              "type": "number",
+              "minimum": 0
+            },
+            "unit_price": {
+              "type": "number",
+              "minimum": 0
+            },
+            "cycle_time": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max_inventory": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max_backorder": {
+              "type": "number",
+              "minimum": 0
+            },
+            "total_cost": {
+              "type": "number",
+              "minimum": 0
+            },
+            "costs": {
+              "$ref": "#/$defs/costs"
+            },
+            "cost_basis": {
+              "$ref": "#/$defs/annual_basis"
+            },
+            "constraints": {
+              "$ref": "#/$defs/order_constraints"
+            }
+          },
+          "required": [
+            "model",
+            "guarantee",
+            "order_quantity",
+            "unit_price",
+            "cycle_time",
+            "max_inventory",
+            "max_backorder",
+            "total_cost",
+            "costs",
+            "cost_basis"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "solve_eoq"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "enum": [
+                "basic_eoq",
+                "epq",
+                "discount_eoq",
+                "backorder_eoq",
+                "incremental_discount_eoq"
+              ]
+            },
+            "quantity": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "costs": {
+              "$ref": "#/$defs/costs"
+            },
+            "total_cost": {
+              "type": "number",
+              "minimum": 0
+            },
+            "cost_basis": {
+              "$ref": "#/$defs/annual_basis"
+            }
+          },
+          "required": [
+            "model",
+            "quantity",
+            "costs",
+            "total_cost",
+            "cost_basis"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "evaluate_eoq"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "enum": [
+                "basic_eoq",
+                "epq",
+                "discount_eoq",
+                "backorder_eoq",
+                "incremental_discount_eoq"
+              ]
+            },
+            "reorder_point": {
+              "type": "number",
+              "minimum": 0
+            },
+            "unit": {
+              "const": "items"
+            },
+            "lead_time_days": {
+              "type": "number",
+              "minimum": 0
+            },
+            "days_of_operation": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "model",
+            "reorder_point",
+            "unit",
+            "lead_time_days",
+            "days_of_operation"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "reorder_point"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "enum": [
+                "basic_eoq",
+                "epq",
+                "discount_eoq",
+                "backorder_eoq",
+                "incremental_discount_eoq"
+              ]
+            },
+            "times": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0
+              },
+              "maxItems": 1000
+            },
+            "inventory_levels": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 1000
+            },
+            "time_unit": {
+              "const": "operating_days"
+            },
+            "inventory_unit": {
+              "const": "items"
+            },
+            "days_of_operation": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "model",
+            "times",
+            "inventory_levels",
+            "time_unit",
+            "inventory_unit",
+            "days_of_operation"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "inventory_profile"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/plan"
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "solve_dynamic"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "success",
+        "message",
+        "result",
+        "meta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "plans": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/plan"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "reference_method": {
+              "const": "wagner-whitin"
+            },
+            "absolute_cost_gap": {
+              "type": "number"
+            },
+            "relative_cost_gap_percent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "plans",
+            "reference_method",
+            "absolute_cost_gap",
+            "relative_cost_gap_percent"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": [
+            "operation",
+            "contract_version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "compare_dynamic"
+            },
+            "contract_version": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "success",
+        "message",
+        "error"
+      ],
+      "properties": {
+        "success": {
+          "const": false
+        },
+        "message": {
+          "type": "string"
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "code",
+            "message"
+          ],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "code": {
+              "enum": [
+                "INVALID_JSON",
+                "INVALID_REQUEST",
+                "INFEASIBLE_PLAN",
+                "NUMERICAL_ERROR",
+                "EXECUTION_ERROR"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

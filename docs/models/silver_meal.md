@@ -9,9 +9,9 @@ Build a feasible dynamic order plan by comparing average cost per covered period
 ## Assumptions
 
 - Known demand over a finite horizon; one item and equal-duration periods.
-- Orders are available before demand in their order period: no explicit delivery delay.
-- Constant, non-negative setup and holding costs; unlimited ordering and storage capacity.
-- All demand must be met; initial inventory is available before period 1.
+- Fixed integer lead time; orders arrive before demand in their receipt period.
+- Non-negative setup and holding costs, constant or specified per period; unlimited ordering and storage capacity.
+- All demand must be met; initial inventory must cover demand before the first possible receipt. No pre-horizon releases or pipeline orders.
 
 ## Inputs and units
 
@@ -21,7 +21,7 @@ Use the [shared dynamic inputs and units](conventions.md#dynamic-lot-sizing). Pe
 
 Starting at a positive net-demand period $t$, evaluate covering $n$ periods:
 
-$$\overline C_t(n)=\frac{K+h\sum_{k=1}^{n-1}k d'_{t+k}}{n}.$$
+$$\overline C_t(n)=\frac{K_{t-L}+\sum_{k=1}^{n-1}d'_{t+k}\sum_{u=t}^{t+k-1}h_u}{n}.$$
 
 Increase $n$ until average cost strictly rises, then use the preceding span. Equal average costs permit extension. If the horizon is reached, use the last available span.
 Order the sum of net demands in that span, then repeat at the next uncovered period. Zero-demand starting periods are skipped; zeros inside a candidate span still count as elapsed holding periods.
@@ -59,6 +59,10 @@ Total cost: 180.00
 
 ## Verification
 
+[Operational tests](../../tests/test_practical_models.py) independently enumerate
+release schedules with varying costs, lead times and initial stock, then reconstruct
+receipt timing, stock balances and cost.
+
 The [independent schedule tests](../../tests/test_independent_optimality.py)
 enumerate feasible integer orders for 2,187 small scenarios per method and
 reconstruct costs from stock balances. The [contract tests](../../tests/test_model_contracts.py)
@@ -69,7 +73,7 @@ The heuristic must be feasible, its returned cost must equal the reconstructed c
 ## Limitations
 
 There is no global optimality guarantee: a local stopping decision can miss a cheaper later grouping.
-Current candidate holding-cost sums are recomputed, giving O(T²) worst-case work and O(T) plan storage. The comparison examples measure plan quality, not runtime speed. The same capacity and lead-time limitations as Wagner–Whitin apply.
+Incremental holding-cost accumulation gives O(T) time and O(T) plan storage. The same capacity and pipeline limitations as Wagner–Whitin apply. With varying setup costs, starting only at positive net demand may miss cheaper earlier receipts: demand `[0, 2]`, setup `[1, 100]`, holding `[1, 1]` costs 100 with this heuristic but 3 with Wagner–Whitin.
 
 ## References
 

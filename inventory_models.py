@@ -1,11 +1,14 @@
 import math
 from dataclasses import dataclass
 
-import matplotlib.pyplot as plt
 import numpy as np
-import plotly.express as px
 
-from model_common import CostBreakdown, validate_number
+from model_common import (
+    CostBreakdown,
+    InfeasiblePlanError,
+    OrderConstraints,
+    validate_number,
+)
 
 
 @dataclass(frozen=True)
@@ -97,13 +100,40 @@ class BasicEOQ:
             shortage=shortage,
         )
 
-    def solve(self) -> EOQResult:
+    def _quantity_regions(self):
+        """Yield lower-inclusive/upper-exclusive price regions and their optima."""
+        yield 0.0, math.inf, self.calculate_eoq()
+
+    def _constrained_quantity(self, constraints: OrderConstraints) -> float:
+        if not isinstance(constraints, OrderConstraints):
+            raise ValueError("constraints must be an OrderConstraints instance.")
+        candidates = [
+            q
+            for lo, hi, optimum in self._quantity_regions()
+            for q in constraints.candidates(lo, hi, optimum)
+        ]
+        if not candidates:
+            raise InfeasiblePlanError(
+                "No positive order quantity satisfies the bounds and pack multiple."
+            )
+        quantity = min(
+            candidates, key=lambda q: (self.calculate_costs(q).total_cost, q)
+        )
+        self.eoq_value = quantity
+        return quantity
+
+    def solve(self, constraints: OrderConstraints | None = None) -> EOQResult:
         """Return the optimum and a common, structured cost breakdown.
 
-        Quantities are continuous. Cycle time is in demand periods, not days.
+        Quantities are continuous unless constraints specify integrality or packs.
+        Cycle time is in demand periods, not days.
         Total cost includes purchase cost for all EOQ-family models.
         """
-        quantity = self.calculate_eoq()
+        quantity = (
+            self.calculate_eoq()
+            if constraints is None
+            else self._constrained_quantity(constraints)
+        )
         maximum, backlog = self._stock_limits(quantity)
         return EOQResult(
             order_quantity=quantity,
@@ -178,7 +208,12 @@ class BasicEOQ:
         return self.demand_rate / days_of_operation * lead_time + safety_stock
 
     def inventory_level(
-        self, t, analysis_mode: bool = False, *, days_of_operation: float = 365
+        self,
+        t,
+        analysis_mode: bool = False,
+        *,
+        days_of_operation: float = 365,
+        constraints: OrderConstraints | None = None,
     ):
         """Return stock at elapsed operating days within a repeating cycle."""
         validate_number("days_of_operation", days_of_operation, positive=True)
@@ -187,7 +222,11 @@ class BasicEOQ:
             raise ValueError("t must contain finite, non-negative times.")
         t = t / days_of_operation
         D = self.demand_rate
-        Q = self.calculate_eoq()
+        Q = (
+            self.calculate_eoq()
+            if constraints is None
+            else self._constrained_quantity(constraints)
+        )
         T = Q / D
         if analysis_mode:
             print("--- Inventory Level Calculation Analysis ---")
@@ -204,6 +243,8 @@ class BasicEOQ:
         Y = self.inventory_level(X)
 
         if renderer == "matplotlib":
+            import matplotlib.pyplot as plt
+
             plt.title("Inventory Level Over Time")
             plt.plot(X, Y)
             plt.xlabel("Days")
@@ -212,6 +253,8 @@ class BasicEOQ:
             plt.show()
 
         if renderer == "plotly":
+            import plotly.express as px
+
             my_graph = px.line(
                 x=X,
                 y=Y,
@@ -299,7 +342,12 @@ class EPQ(BasicEOQ):
         return epq
 
     def inventory_level(
-        self, t, analysis_mode: bool = False, *, days_of_operation: float = 365
+        self,
+        t,
+        analysis_mode: bool = False,
+        *,
+        days_of_operation: float = 365,
+        constraints: OrderConstraints | None = None,
     ):
         """Return stock at elapsed operating days within a repeating cycle."""
         validate_number("days_of_operation", days_of_operation, positive=True)
@@ -309,7 +357,11 @@ class EPQ(BasicEOQ):
         t = t / days_of_operation
         D = self.demand_rate
         P = self.production_rate
-        Q = self.calculate_eoq()
+        Q = (
+            self.calculate_eoq()
+            if constraints is None
+            else self._constrained_quantity(constraints)
+        )
         T = Q / D
         mod_t = t % T
         production_end = Q / P
@@ -374,6 +426,20 @@ class DiscountEOQ(BasicEOQ):
             raise ValueError("Discount rates must not decrease as quantity increases.")
         self.discount_rates = normalized_discounts
         self.sorted_discounts = tiers
+
+    def _quantity_regions(self):
+        for index, (lower, rate) in enumerate(self.sorted_discounts):
+            upper = (
+                self.sorted_discounts[index + 1][0]
+                if index + 1 < len(self.sorted_discounts)
+                else math.inf
+            )
+            holding = self.price * (1 - rate) * self.holding_rate
+            yield (
+                lower,
+                upper,
+                math.sqrt(2 * self.demand_rate * self.ordering_cost / holding),
+            )
 
     def _unit_price(self, quantity: float) -> float:
         rate = next(
@@ -550,7 +616,12 @@ class BackorderEOQ(BasicEOQ):
         }
 
     def inventory_level(
-        self, t, analysis_mode: bool = False, *, days_of_operation: float = 365
+        self,
+        t,
+        analysis_mode: bool = False,
+        *,
+        days_of_operation: float = 365,
+        constraints: OrderConstraints | None = None,
     ):
         """Return stock at elapsed operating days within a repeating cycle."""
         validate_number("days_of_operation", days_of_operation, positive=True)
@@ -559,7 +630,11 @@ class BackorderEOQ(BasicEOQ):
             raise ValueError("t must contain finite, non-negative times.")
         t = t / days_of_operation
         D = self.demand_rate
-        Q = self.calculate_eoq()
+        Q = (
+            self.calculate_eoq()
+            if constraints is None
+            else self._constrained_quantity(constraints)
+        )
         H = self.holding_cost
         P = self.shortage_cost
         T = Q / D
@@ -588,3 +663,77 @@ class BackorderEOQ(BasicEOQ):
             print(f"Inventory Level at time t: {inventory}")
 
         return inventory
+
+
+class IncrementalDiscountEOQ(DiscountEOQ):
+    """EOQ with marginal price tiers; each tier prices only units within its band.
+
+    Holding is valued using the average acquisition cost of the complete lot.
+    This accounting assumption is explicit and differs from tracking depletion
+    of differently priced units in a particular sequence.
+    """
+
+    def _price_regions(self):
+        cumulative = 0.0
+        previous = 0.0
+        previous_price = self.price
+        for index, (lower, rate) in enumerate(self.sorted_discounts):
+            cumulative += (lower - previous) * previous_price
+            price = self.price * (1 - rate)
+            upper = (
+                self.sorted_discounts[index + 1][0]
+                if index + 1 < len(self.sorted_discounts)
+                else math.inf
+            )
+            yield lower, upper, price, cumulative - price * lower
+            previous, previous_price = lower, price
+
+    def _unit_price(self, quantity: float) -> float:
+        for lower, upper, price, offset in self._price_regions():
+            if lower <= quantity < upper:
+                return price + offset / quantity
+        raise ValueError("quantity is outside the price schedule.")
+
+    def _quantity_regions(self):
+        for lower, upper, price, offset in self._price_regions():
+            optimum = math.sqrt(
+                2
+                * self.demand_rate
+                * (self.ordering_cost + offset)
+                / (price * self.holding_rate)
+            )
+            yield lower, upper, optimum
+
+    def calculate_eoq(self, analysis_mode: bool = False):
+        """Return the cost-minimizing continuous quantity across marginal tiers."""
+        # Prices and costs are continuous at tier breaks. Include boundaries
+        # as well as interior stationary points, including an upper boundary
+        # whose stationary point lies in the following tier.
+        candidates = [max(lo, min(hi, q)) for lo, hi, q in self._quantity_regions()]
+        quantity = min(
+            candidates, key=lambda q: (self.calculate_costs(q).total_cost, q)
+        )
+        self.eoq_value = quantity
+        if analysis_mode:
+            print(f"Incremental-discount EOQ: {quantity}")
+        return quantity
+
+    def _constrained_quantity(self, constraints: OrderConstraints) -> float:
+        # Candidate clamping must include marginal-tier boundaries: unlike
+        # all-units prices, moving to a new tier has no purchase-cost jump.
+        if not isinstance(constraints, OrderConstraints):
+            raise ValueError("constraints must be an OrderConstraints instance.")
+        candidates = []
+        for lower, upper, optimum in self._quantity_regions():
+            candidates.extend(constraints.candidates(lower, upper, optimum))
+            if math.isfinite(upper):
+                candidates.extend(constraints.candidates(upper, math.inf, upper))
+        if not candidates:
+            raise InfeasiblePlanError(
+                "No positive order quantity satisfies the bounds and pack multiple."
+            )
+        quantity = min(
+            candidates, key=lambda q: (self.calculate_costs(q).total_cost, q)
+        )
+        self.eoq_value = quantity
+        return quantity

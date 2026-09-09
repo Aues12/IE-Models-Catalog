@@ -15,6 +15,10 @@ Choose a production batch size when units are produced gradually while demand co
 
 ## Inputs and units
 
+The formulas below describe the continuous case. Optional
+[order constraints](order_constraints.md) add per-order bounds, integrality and pack multiples
+through `solve(constraints=...)` and `inventory_level(..., constraints=...)`.
+
 Use the [shared EOQ inputs and units](conventions.md#eoq-family). This example uses an annual demand period.
 
 Additional input: `production_rate` ($P$), in units per demand period. It must be finite and greater than `demand_rate`. Here `ordering_cost` represents setup cost per production run.

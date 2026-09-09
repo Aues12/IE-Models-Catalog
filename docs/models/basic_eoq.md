@@ -15,6 +15,10 @@ Choose a repeating order quantity that balances the cost of ordering frequently 
 
 ## Inputs and units
 
+The formulas below describe the continuous case. Optional
+[order constraints](order_constraints.md) add per-order bounds, integrality and pack multiples
+through `solve(constraints=...)` and `inventory_level(..., constraints=...)`.
+
 Use the [shared EOQ inputs and units](conventions.md#eoq-family). This example uses an annual demand period. No additional constructor parameters are required.
 
 ## Mathematical definition

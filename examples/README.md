@@ -129,3 +129,11 @@ constraints. It is a deterministic sensitivity exercise, not a forecast or a
 probability-based risk analysis.
 
 See the [API reference](../docs/API_REFERENCE.md) for result fields and cost conventions.
+
+## Operational conditions
+
+Run `python -m examples.practical_models` from the checkout root. It prints a
+minimum/maximum pack-order example, compares all-units and incremental discounts,
+and compares dynamic plans with cost vectors and one-period lead time. Read the
+[constraint guide](../docs/models/order_constraints.md) and
+[incremental discount guide](../docs/models/incremental_discount_eoq.md) for calculations.
