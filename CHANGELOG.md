@@ -8,6 +8,8 @@ The project did not historically use release tags. Versions through `0.4.1` were
 
 ### Fixed
 
+* Set the pytest repository import path explicitly so both console and module invocations can collect release-script tests; align CI with `python -m pytest`.
+
 * Fetch the authoritative release tag before CI annotation checks, preserving annotated-tag validation when checkout materializes a commit reference.
 
 ## [0.5.0] - 2026-09-09
