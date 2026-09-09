@@ -1,0 +1,22 @@
+{
+  "operation": "solve_eoq",
+  "params": {
+    "model": "incremental_discount_eoq",
+    "inputs": {
+      "price": 10,
+      "demand_rate": 1000,
+      "ordering_cost": 50,
+      "holding_rate": 0.2,
+      "discount_tiers": [
+        {
+          "minimum_quantity": 100,
+          "discount_rate": 0.1
+        },
+        {
+          "minimum_quantity": 200,
+          "discount_rate": 0.2
+        }
+      ]
+    }
+  }
+}

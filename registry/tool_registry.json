@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "inventory_models",
+      "capability": "deterministic_inventory_planning",
+      "status": "experimental",
+      "interfaces": [
+        {
+          "name": "stdin_json",
+          "entrypoint": "inventory_agent.py",
+          "command": [
+            "python",
+            "-m",
+            "ie_models_agent"
+          ],
+          "transport": "stdin_json"
+        },
+        {
+          "name": "python_api",
+          "entrypoint": "ie_models_agent/tool.py",
+          "callables": [
+            "run"
+          ]
+        }
+      ],
+      "contract_version": 1,
+      "path": ".",
+      "entrypoint": "inventory_agent.py",
+      "transport": "stdin_json",
+      "manifest": "SKILL.yaml",
+      "procedure": "USE_TOOL.md",
+      "operations": [
+        "list_models",
+        "solve_eoq",
+        "evaluate_eoq",
+        "reorder_point",
+        "inventory_profile",
+        "solve_dynamic",
+        "compare_dynamic"
+      ]
+    }
+  ]
+}

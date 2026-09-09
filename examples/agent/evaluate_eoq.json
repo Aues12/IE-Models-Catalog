@@ -1,0 +1,13 @@
+{
+  "operation": "evaluate_eoq",
+  "params": {
+    "model": "basic_eoq",
+    "inputs": {
+      "price": 50,
+      "demand_rate": 1200,
+      "ordering_cost": 75,
+      "holding_rate": 0.2
+    },
+    "quantity": 150
+  }
+}

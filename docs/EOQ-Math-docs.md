@@ -36,7 +36,7 @@ Annual costs consist of:
 
 Total cost:
 
-TC(Q)= $\frac{D S}{Q} + \frac{H Q}{2}$
+$TC(Q)= \frac{D S}{Q} + \frac{H Q}{2}$
 
 ---
 
@@ -46,9 +46,9 @@ TC(Q)= $\frac{D S}{Q} + \frac{H Q}{2}$
 
 $\frac{d TC}{d Q} = -\frac{D S}{Q^2} + \frac{H}{2} = 0$
 
-Solve for **Q***:
+Solve for $Q^*$:
 
-$Q^∗= \sqrt{\frac{2 D S}{H}}$
+$Q^*= \sqrt{\frac{2 D S}{H}}$
 
 This represents the **Economic Order Quantity**, the quantity that minimizes total cost.
 
@@ -56,8 +56,8 @@ This represents the **Economic Order Quantity**, the quantity that minimizes tot
 
 ## 4. Summary
 
-- **Optimal order quantity (Q):** $Q∗ = \sqrt{2DS/H}$
-- **Total annual cost at Q:** $TC(Q^∗) = \frac{D S}{Q^*} + \frac{H Q^*}{2}$
+- **Optimal order quantity (Q):** $Q^* = \sqrt{2DS/H}$
+- **Total annual cost at Q:** $TC(Q^*) = \frac{D S}{Q^*} + \frac{H Q^*}{2}$
 - **Intuition:** EOQ balances the *trade-off*  between **ordering cost** and **holding cost**.
 
 ---
@@ -91,7 +91,7 @@ Thus, EPQ is suitable for **manufacturing settings** where production and consum
 
 **Key relationship:** Only a portion of the production adds to inventory, since demand occurs simultaneously:
 
-**Effective buildup rate** = $P−D$
+**Effective buildup rate** = $P-D$
 
 **Maximum inventory level**:  $I_{max} = Q \left(1 - \frac{D}{P}\right)$
 
@@ -128,7 +128,7 @@ $TC(Q) = \frac{D S}{Q} + \frac{H Q}{2} \left(1 - \frac{D}{P}\right)$
 
 To minimize TC(Q), differentiate with respect to Q and solve:
 
-$Q∗ = \sqrt{\frac{2 D S}{H} \cdot \frac{P}{P - D}}$
+$Q^* = \sqrt{\frac{2 D S}{H} \cdot \frac{P}{P - D}}$
 
 This is the **EPQ optimal lot size**.
 
@@ -136,7 +136,7 @@ This is the **EPQ optimal lot size**.
 
 ## 5. Summary
 
-- When P→∞, EPQ reduces to EOQ.
+- When $P \to \infty$, EPQ reduces to EOQ.
 - Optimal lot size balances **setup cost vs. holding cost**, adjusted for the production rate.
 - Maximum inventory is reduced compared to EOQ since demand occurs during production.
 
@@ -217,9 +217,9 @@ $TC(Q) = \frac{D S}{Q} + \frac{H P}{2(H+P)} Q$
 
 $\frac{d TC}{d Q} = -\frac{D S}{Q^2} + \frac{H P}{2(H+P)} = 0$
 
-Solve for **Q***:
+Solve for $Q^*$:
 
-$Q∗ = \sqrt{\frac{2 D S (H+P)}{H P}}$
+$Q^* = \sqrt{\frac{2 D S (H+P)}{H P}}$
 
 This matches the implementation in `BackorderEOQ.calculate_eoq`.
 
@@ -231,9 +231,9 @@ This matches the implementation in `BackorderEOQ.calculate_eoq`.
     
     $S_{max} = \frac{P}{H+P} Q^*, \quad B_{max} = \frac{H}{H+P} Q^*$
     
-- **Total annual cost** at **Q***:
+- **Total annual cost** at $Q^*$:
     
-    $TC(Q∗) = \frac{D S}{Q^*} + \frac{H S_{max}^2}{2 Q^*} + \frac{P B_{max}^2}{2 Q^*}$
+    $TC(Q^*) = \frac{D S}{Q^*} + \frac{H S_{max}^2}{2 Q^*} + \frac{P B_{max}^2}{2 Q^*}$
     
 - **Intuition:** The ratio of holding cost to shortage cost determines how much inventory is maintained versus backordered.
 
@@ -286,7 +286,7 @@ Computation steps:
 
 1. **Compute EOQ for each price tier:**
     
-    $Qi∗= \sqrt{\frac{2 D S}{H_i}}$  where $H_i$  = holding cost based on unit price in tier  $i$.
+    $Q_i^*= \sqrt{\frac{2 D S}{H_i}}$ where $H_i$ = holding cost based on unit price in tier $i$.
     
 2. **Check feasibility:** $Q^*_i$ must satisfy the minimum quantity for the discount tier.
 3. **Check total cost at every tier**:
@@ -306,4 +306,3 @@ Computation steps:
 **Practical Use:** Discount EOQ is applied in procurement scenarios where suppliers offer lower unit prices for larger orders, influencing optimal inventory decisions.
 
 ---
-

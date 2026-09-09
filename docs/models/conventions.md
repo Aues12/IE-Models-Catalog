@@ -7,7 +7,7 @@ state the additional assumptions that make their equations applicable.
 
 ## EOQ family
 
-All four EOQ constructors use these inputs:
+All five EOQ constructors use these inputs:
 
 | Input | Symbol | Meaning and unit | Default / domain |
 | --- | --- | --- | --- |
@@ -24,8 +24,8 @@ An annual 20% carrying charge is entered as `0.20`.
 
 `solve()` returns an `EOQResult` with order quantity, unit price, cycle time,
 maximum inventory, maximum backlog, and a `CostBreakdown`. Cycle time is measured
-in demand periods. Quantity is continuous unless a future model explicitly
-states otherwise. `calculate_eoq()` remains available for a numeric quantity.
+in demand periods. Quantity is continuous by default; `solve(constraints=OrderConstraints(...))`
+enforces [bounds, integrality and pack multiples](order_constraints.md). `calculate_eoq()` remains available for a numeric quantity.
 
 ## Dynamic lot sizing
 
@@ -34,23 +34,30 @@ Both dynamic methods receive `DLSInput` through `DynamicLotSizing`:
 | Input | Symbol | Meaning and unit | Default / domain |
 | --- | --- | --- | --- |
 | `demand` | $d_t$ | Items needed in each equal-duration period | Required, non-empty list or tuple |
-| `ordering_cost` | $K$ | Monetary units per positive order | Required, non-negative |
-| `holding_cost` | $h$ | Monetary units per item held at a period end | Required, non-negative |
+| `ordering_cost` | $K_t$ | Monetary units per positive order release | Required, non-negative scalar or full-horizon list |
+| `holding_cost` | $h_t$ | Monetary units per item held at a period end | Required, non-negative scalar or full-horizon list |
 | `initial_inventory` | $I_0$ | Stock available before period 1 | 0, non-negative |
+| `lead_time` | $L$ | Whole periods between release and receipt | 0, non-negative integer |
 
 Demand entries and all costs/stocks must be finite, non-negative real numbers.
 Fractional quantities are accepted. All-zero demand and zero costs are valid.
-Orders are available before their period's demand is served.
+An order released in period $t$ arrives before demand in period $t+L$.
+Cost lists must have exactly one entry per demand period. There are no releases
+before period 1 or pre-existing pipeline orders. Initial stock must cover the
+first $L$ periods; otherwise `InfeasiblePlanError` is raised. No in-transit
+holding cost is charged.
 
 Initial stock is consumed against demands in chronological order. Remaining net
 demands $d'_t$ are planned by the chosen method. Inputs are not modified.
 The result then accounts for physical stock using the original demand:
 
-$$I_t=I_{t-1}+q_t-d_t.$$
+$$I_t=I_{t-1}+r_t-d_t,\qquad r_t=q_{t-L}.$$
+
+Here $q_t$ is a release and $r_t$ a receipt; releases outside the horizon are zero.
 
 The full-horizon cost is:
 
-$$C=K\sum_{t=1}^{T}\mathbf{1}_{q_t>0}+h\sum_{t=1}^{T}I_t.$$
+$$C=\sum_{t=1}^{T}K_t\mathbf{1}_{q_t>0}+\sum_{t=1}^{T}h_t I_t.$$
 
 Holding includes initial stock still present at period end and any stock left
 at the end of the horizon. Initial-stock acquisition costs and salvage values
@@ -58,7 +65,8 @@ are not modeled. For example, demand `[10, 0]`, initial stock 15, and holding co
 1 require no orders but incur holding cost `5 + 5 = 10`.
 
 `solve()` returns `DLSResult`: `order_quantities`, `order_periods`,
-`inventory_levels`, `total_cost`, and `costs`. Period labels are **one-based**;
+`receipt_quantities`, `receipt_periods`, `inventory_levels`, `total_cost`, and `costs`.
+Order fields describe releases; receipt fields describe deliveries. Period labels are **one-based**;
 list indices are zero-based. Inventory levels are period-end balances.
 
 ## Time and cost comparisons

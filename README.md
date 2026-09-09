@@ -3,7 +3,7 @@
 Python inventory models for industrial engineering: calculate order quantities,
 plan orders across periods, and inspect inventory costs.
 
-The catalog includes four EOQ-family models, two dynamic lot-sizing methods,
+The catalog includes five EOQ-family models, two dynamic lot-sizing methods,
 inventory plots, and mathematical walkthroughs. It is intended for learning and
 analyzing deterministic inventory scenarios.
 
@@ -53,7 +53,7 @@ Total cost including purchases: 61341.64 per year
 
 Under the model's assumptions, ordering approximately 134.16 units per cycle
 minimizes annual ordering and holding costs. The optimum is a continuous
-quantity; the library does not enforce whole-unit or pack-size constraints.
+quantity. Optional order constraints enforce whole units, pack multiples and order bounds.
 
 ## Choose a model
 
@@ -62,11 +62,12 @@ quantity; the library does not enforce whole-unit or pack-size constraints.
 | Constant demand, replenishment arrives at once | `BasicEOQ` | Ordering and holding costs |
 | Stock builds gradually during production | `EPQ` | Production rate greater than demand |
 | Larger orders receive a lower unit price | `DiscountEOQ` | All-units quantity discounts |
+| Only units within each band receive its discount | `IncrementalDiscountEOQ` | Marginal quantity discounts |
 | Planned shortages can be filled later | `BackorderEOQ` | Holding and backorder costs |
 | Known demand varies by period; you need an optimal plan | Wagner–Whitin | Exact dynamic lot sizing |
 | Known demand varies by period; you want a heuristic plan | Silver–Meal | Average cost per covered period; optimality is not guaranteed |
 
-All four EOQ-family models provide `solve()`, `calculate_reorder_point()`,
+All five EOQ-family models provide `solve()`, `calculate_reorder_point()`,
 `inventory_level()`, and `graph()`. See the [API reference](docs/API_REFERENCE.md)
 for constructors and examples of each variant.
 
@@ -84,7 +85,7 @@ data = DLSInput(
 )
 result = DynamicLotSizing(data).solve(method="wagner-whitin")
 
-print(result.order_quantities)  # [60.0, 0, 0]
+print(result.order_quantities)  # [60.0, 0.0, 0.0]
 print(result.inventory_levels)  # [50.0, 30.0, 0.0]
 print(result.total_cost)  # 180.0
 ```
@@ -93,6 +94,19 @@ The plan orders all 60 units in period 1. One order costs 100, and carrying 50
 then 30 units costs another 80. To use Silver–Meal, set `method="silver-meal"`.
 Both methods support starting stock through `DLSInput(initial_inventory=...)`
 when supplied alongside demand and costs.
+
+## Add operating conditions
+
+Use `model.solve(constraints=OrderConstraints(min_quantity=250, max_quantity=400,
+order_multiple=48))` to choose a feasible EOQ lot; import `OrderConstraints` from
+`model_common`. See the [constraint guide](docs/models/order_constraints.md).
+
+Dynamic inputs accept a setup/holding cost for each period and `lead_time` in
+whole periods. Results distinguish order releases from receipts. Initial stock
+must cover demand before the first possible receipt.
+
+Run `python -m examples.practical_models` for pack orders, both discount types,
+and a comparison with varying costs and delivery lead time.
 
 ## Understand the results
 
@@ -132,6 +146,20 @@ The reports open locally without an internet connection.
 
 See the [examples guide](examples/README.md) for expected results and interpretation.
 
+## Agent interface
+
+Agents can discover and invoke the existing models through a bounded JSON interface:
+
+```bash
+python -m ie_models_agent < examples/agent/list_models.json
+python -m ie_models_agent < examples/agent/solve_eoq.json
+```
+
+The installed `ie-models-agent` command uses the same interface. Responses include
+cost horizons and exact/heuristic guarantees. Read [USE_TOOL.md](USE_TOOL.md) for
+operations, input units, errors, and limits; the [local registry](registry/tool_registry.json)
+and [standards](standards/README.md) explain discovery and maintenance.
+
 ## Documentation
 
 | Guide | Contents |
@@ -170,3 +198,8 @@ External pull requests are currently not accepted; see the
 ## License
 
 [MIT](LICENSE).
+
+## Releases
+
+Version policy and release checks are documented in the [release guide](docs/RELEASING.md).
+See the [changelog](CHANGELOG.md) for changes and compatibility notes.

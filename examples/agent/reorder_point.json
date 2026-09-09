@@ -1,0 +1,14 @@
+{
+  "operation": "reorder_point",
+  "params": {
+    "model": "basic_eoq",
+    "inputs": {
+      "price": 50,
+      "demand_rate": 1200,
+      "ordering_cost": 75,
+      "holding_rate": 0.2
+    },
+    "lead_time": 10,
+    "safety_stock": 20
+  }
+}

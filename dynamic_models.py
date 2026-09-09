@@ -1,17 +1,21 @@
+"""Deterministic lot sizing with period costs and explicit release/receipt timing."""
+
 from dataclasses import dataclass, field
+from numbers import Integral
 from typing import List
 
 import numpy as np
 
-from model_common import CostBreakdown, validate_number
+from model_common import CostBreakdown, InfeasiblePlanError, validate_number
 
 
 @dataclass
 class DLSInput:
     demand: List[float]
-    ordering_cost: float
-    holding_cost: float
+    ordering_cost: float | List[float]
+    holding_cost: float | List[float]
     initial_inventory: float = 0.0
+    lead_time: int = 0
 
 
 @dataclass
@@ -21,6 +25,18 @@ class DLSResult:
     order_periods: List[int]
     costs: CostBreakdown = field(default_factory=CostBreakdown)
     inventory_levels: List[float] = field(default_factory=list)
+    receipt_quantities: List[float] = field(default_factory=list)
+    receipt_periods: List[int] = field(default_factory=list)
+
+
+def _cost_series(name, value, periods):
+    """Expand a constant rate or copy a full-horizon series without mutating input."""
+    values = list(value) if isinstance(value, (list, tuple)) else [value] * periods
+    if len(values) != periods:
+        raise ValueError(f"{name} must have one value per demand period.")
+    for number in values:
+        validate_number(name, number)
+    return values
 
 
 class DynamicLotSizing:
@@ -31,17 +47,30 @@ class DynamicLotSizing:
     def _validate_parameters(self):
         if not isinstance(self.data.demand, (list, tuple)) or not self.data.demand:
             raise ValueError("Demand must be a non-empty list or tuple.")
-        validate_number("ordering_cost", self.data.ordering_cost)
-        validate_number("holding_cost", self.data.holding_cost)
+        self._ordering = _cost_series(
+            "ordering_cost", self.data.ordering_cost, len(self.data.demand)
+        )
+        self._holding = _cost_series(
+            "holding_cost", self.data.holding_cost, len(self.data.demand)
+        )
         validate_number("initial_inventory", self.data.initial_inventory)
+        if (
+            isinstance(self.data.lead_time, bool)
+            or not isinstance(self.data.lead_time, Integral)
+            or self.data.lead_time < 0
+        ):
+            raise ValueError(
+                "lead_time must be a non-negative integer number of periods."
+            )
         for demand in self.data.demand:
             validate_number("demand", demand)
 
     def solve(self, method: str = "wagner-whitin") -> DLSResult:
-        """Plan net demand, then account for actual end-of-period inventory.
+        """Return releases, receipts and costs over the original planning horizon.
 
-        Holding cost includes initial stock remaining at each period end,
-        including residual stock at the end of the planning horizon.
+        Setup is charged at release; holding at each period end. Orders cannot
+        be released before period 1. Initial stock must cover demand before the
+        first possible receipt. There are no pre-existing pipeline orders.
         """
         if method not in {"wagner-whitin", "silver-meal"}:
             raise ValueError(f"Unknown method: {method}")
@@ -52,216 +81,106 @@ class DynamicLotSizing:
             consumed = min(remaining, demand)
             net_demand.append(demand - consumed)
             remaining -= consumed
-        working = DynamicLotSizing(
-            DLSInput(
-                demand=net_demand,
-                ordering_cost=self.data.ordering_cost,
-                holding_cost=self.data.holding_cost,
+        lead = self.data.lead_time
+        if any(q > 0 for q in net_demand[:lead]):
+            raise InfeasiblePlanError(
+                "Initial inventory cannot cover demand before the first possible receipt; pre-horizon orders are not supported."
             )
-        )
         if method == "wagner-whitin":
-            result = working._solve_wagner_whitin()
+            receipts = self._solve_wagner_whitin(net_demand)
         else:
-            result = working._solve_silver_meal()
-
+            receipts = self._solve_silver_meal(net_demand)
+        periods = len(net_demand)
+        orders = [0.0] * periods
+        for t, quantity in enumerate(receipts):
+            if quantity > 0:
+                orders[t - lead] = quantity
         inventory = self.data.initial_inventory
         levels = []
-        for demand, order in zip(self.data.demand, result.order_quantities):
-            inventory += order - demand
-            # Avoid a tiny negative balance from floating-point cancellation.
+        for demand, receipt in zip(self.data.demand, receipts):
+            inventory += receipt - demand
             if inventory < 0 and np.isclose(inventory, 0, atol=1e-10, rtol=0):
                 inventory = 0.0
             levels.append(inventory)
         costs = CostBreakdown(
-            ordering=sum(q > 0 for q in result.order_quantities)
-            * self.data.ordering_cost,
-            holding=sum(levels) * self.data.holding_cost,
+            ordering=sum(cost for q, cost in zip(orders, self._ordering) if q > 0),
+            holding=sum(stock * cost for stock, cost in zip(levels, self._holding)),
         )
         return DLSResult(
-            order_quantities=result.order_quantities,
+            order_quantities=orders,
             total_cost=costs.total_cost,
-            order_periods=result.order_periods,
+            order_periods=[t + 1 for t, q in enumerate(orders) if q > 0],
             costs=costs,
             inventory_levels=levels,
+            receipt_quantities=receipts,
+            receipt_periods=[t + 1 for t, q in enumerate(receipts) if q > 0],
         )
 
-    # ------------------ Wagner-Whitin Algorithm ------------------
-    def _compute_cost_matrix(self):
-        demand = self.data.demand
-        K = self.data.ordering_cost
-        h = self.data.holding_cost
+    def _compute_cost_matrix(self, demand):
+        """Cost of receipt i covering i..j, in quadratic time and storage."""
+        periods = len(demand)
+        costs = np.full((periods, periods), np.inf)
+        for i in range(self.data.lead_time, periods):
+            total = self._ordering[i - self.data.lead_time]
+            accumulated_holding = 0.0
+            for j in range(i, periods):
+                if j > i:
+                    accumulated_holding += self._holding[j - 1]
+                total += demand[j] * accumulated_holding
+                costs[i, j] = total
+        return costs
 
-        T = len(demand)
-        # Generate the cost matrix C(i, j)
-        C = np.zeros((T, T))
-
-        for i in range(T):
-            for j in range(i, T):
-                ordering = K
-                holding = 0
-
-                for k in range(i + 1, j + 1):
-                    holding += demand[k] * (k - i) * h
-
-                C[i, j] = ordering + holding
-
-        return C
-
-    def _solve_wagner_whitin(self) -> DLSResult:
-
-        demand = self.data.demand
-        T = len(demand)
-
-        # Precompute cost of ordering at i and covering up to j
-        # Cost Matrix C[i, j]
-        cost_matrix = self._compute_cost_matrix()
-
-        # F[t] = minimum cost up to period t, to satisfy demand
-        # DP Vector Array
-        min_cost_up_to: List[float] = [0] * (T + 1)
-
-        # prev[t] = best starting period for the last order covering up to t
-        best_starts_list: List[int] = [0] * (T + 1)
-
-        # ---------- Forward DP ----------
-        for t in range(1, T + 1):
-            # A zero-demand period can be passed without placing an order.
-            # Use 0 as a backtracking sentinel for this no-order transition.
-            if demand[t - 1] == 0:
-                min_cost_up_to[t] = min_cost_up_to[t - 1]
-                best_starts_list[t] = 0
+    def _solve_wagner_whitin(self, demand):
+        periods = len(demand)
+        matrix = self._compute_cost_matrix(demand)
+        min_cost = [0.0] * (periods + 1)
+        best_start = [None] * (periods + 1)
+        for end in range(1, periods + 1):
+            if demand[end - 1] == 0:
+                min_cost[end] = min_cost[end - 1]
                 continue
-
-            best_cost = float("inf")
-            best_start = 0
-
-            # Try all possible order starting points i
-            for start in range(1, t + 1):
-                cost_if_start_here = (
-                    min_cost_up_to[start - 1] + cost_matrix[start - 1][t - 1]
-                )  # F[t] = F[i-1] + C[i, t]
-
-                if cost_if_start_here < best_cost:
-                    best_cost = cost_if_start_here
-                    best_start = start
-
-            min_cost_up_to[t] = best_cost
-            best_starts_list[t] = best_start
-
-        # ---------- Backtracking ----------
-        order_periods = []
-        t = T
-
-        while t > 0:
-            last_start = best_starts_list[t]
-
-            if last_start == 0:
-                t -= 1
-                continue
-
-            order_periods.append(last_start)
-            t = last_start - 1
-
-        order_periods.reverse()
-
-        # ---------- Compute order quantities ----------
-        order_quantities: List[float] = [0] * T
-
-        for idx, last_start in enumerate(order_periods):
-            start_idx = last_start - 1
-
-            if idx + 1 < len(order_periods):
-                next_start = order_periods[idx + 1]
-                end_idx = next_start - 2
+            min_cost[end] = float("inf")
+            for start in range(self.data.lead_time, end):
+                candidate = min_cost[start] + matrix[start, end - 1]
+                if candidate < min_cost[end]:
+                    min_cost[end] = candidate
+                    best_start[end] = start
+        receipts = [0.0] * periods
+        end = periods
+        while end > 0:
+            start = best_start[end]
+            if start is None:
+                end -= 1
             else:
-                end_idx = T - 1
+                receipts[start] = sum(demand[start:end])
+                end = start
+        return receipts
 
-            total_demand = sum(demand[start_idx : end_idx + 1])
-            order_quantities[start_idx] = total_demand
+    def _solve_silver_meal(self, demand):
+        """Extend a receipt until average setup/holding cost first increases.
 
-        return DLSResult(
-            order_quantities=order_quantities,
-            total_cost=min_cost_up_to[T],
-            order_periods=order_periods,
-        )
-
-    # ------------------ Silver-Meal Heuristic ------------------
-    def _solve_silver_meal(self) -> DLSResult:
+        Receipt starts at the next positive net demand. With varying setup costs
+        this may miss a cheaper earlier receipt; the policy remains a heuristic.
         """
-        Silver-Meal heuristic for dynamic lot sizing.
-
-        Returns a feasible (not necessarily optimal) ordering plan
-        based on average cost minimization.
-        """
-        demand = self.data.demand
-        K = self.data.ordering_cost
-        h = self.data.holding_cost
-
-        T = len(demand)
-
-        order_quantities: List[float] = [0.0] * T
-        order_periods: List[int] = []
-
+        periods = len(demand)
+        receipts = [0.0] * periods
         t = 0
-
-        while t < T:
-            # A period with no demand does not require an order. Skipping it
-            # also lets the next positive-demand period become an order start.
+        while t < periods:
             if demand[t] == 0:
                 t += 1
                 continue
-
-            n = 1
-            prev_avg_cost = float("inf")
-
-            while True:
-                total_cost = K
-
-                # holding cost
-                for k in range(1, n):
-                    if t + k >= T:
-                        break
-                    total_cost += demand[t + k] * k * h
-
-                avg_cost = total_cost / n
-
-                if avg_cost > prev_avg_cost:
+            total = self._ordering[t - self.data.lead_time]
+            previous_average = total
+            accumulated_holding = 0.0
+            end = t + 1
+            while end < periods:
+                accumulated_holding += self._holding[end - 1]
+                total += demand[end] * accumulated_holding
+                average = total / (end - t + 1)
+                if average > previous_average:
                     break
-
-                prev_avg_cost = avg_cost
-                n += 1
-
-                if t + n > T:
-                    break
-
-            n_opt = n - 1
-
-            qty = sum(demand[t : t + n_opt])
-
-            order_quantities[t] = qty
-            order_periods.append(t + 1)
-
-            t = t + n_opt
-
-        # --- Compute cost ---
-        inventory = 0.0
-        total_cost = 0.0
-
-        for t in range(T):
-            order = order_quantities[t]
-
-            if order > 0:
-                total_cost += K
-
-            inventory += order
-            inventory -= demand[t]
-
-            # holding cost applies to leftover inventory
-            if inventory > 0:
-                total_cost += inventory * h
-
-        return DLSResult(
-            order_quantities=order_quantities,
-            total_cost=total_cost,
-            order_periods=order_periods,
-        )
+                previous_average = average
+                end += 1
+            receipts[t] = sum(demand[t:end])
+            t = end
+        return receipts

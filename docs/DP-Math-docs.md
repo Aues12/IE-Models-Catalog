@@ -1,5 +1,9 @@
 # Dynamic Lot Sizing Mathematics
 
+> The derivation below uses constant costs and zero lead time. For the supported
+> period-cost and release/receipt extension, see [shared conventions](models/conventions.md)
+> and the [Wagner–Whitin guide](models/wagner_whitin.md).
+
 For the current implementation, initial-stock handling, and verification evidence, see the [Wagner–Whitin model guide](models/wagner_whitin.md).
 
 ## 1. Purpose of Dynamic Lot Sizing
@@ -344,8 +348,8 @@ The recurrence itself is quadratic. In this repository, however, interval holdin
 
 ```text
 DP recurrence: O(T²)
-Current cost-matrix preparation: O(T³)
-Current end-to-end implementation: O(T³) time, O(T²) matrix storage
+Current cost-matrix preparation: O(T²)
+Current end-to-end implementation: O(T²) time, O(T²) matrix storage
 ```
 
 This is usually acceptable for small and medium-sized planning horizons.

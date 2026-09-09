@@ -15,6 +15,10 @@ Choose an order quantity when crossing a supplier threshold reduces the price of
 
 ## Inputs and units
 
+The formulas below describe the continuous case. Optional
+[order constraints](order_constraints.md) add per-order bounds, integrality and pack multiples
+through `solve(constraints=...)` and `inventory_level(..., constraints=...)`.
+
 Use the [shared EOQ inputs and units](conventions.md#eoq-family). This example uses an annual demand period.
 
 Additional input: `discount_rates`, a non-empty mapping `{minimum_quantity: discount_fraction}`.
@@ -82,7 +86,7 @@ The contract suite also checks fractional thresholds, exact threshold prices, an
 
 ## Limitations
 
-Incremental discounts (only units above a threshold receive a discount) are not supported. Neither integer-only quantities nor pack multiples are enforced. Increasing-price tiers are rejected. Use `calculate_costs(quantity)` for automatic tier selection; legacy `calculate_total_cost(quantity, price)` uses the price supplied by the caller.
+Use [IncrementalDiscountEOQ](incremental_discount_eoq.md) when discounts apply only to units in each band. Optional [order constraints](order_constraints.md) enforce bounds, integers and pack multiples. Increasing-price tiers are rejected. Use `calculate_costs(quantity)` for automatic tier selection; legacy `calculate_total_cost(quantity, price)` uses the price supplied by the caller.
 
 ## References
 

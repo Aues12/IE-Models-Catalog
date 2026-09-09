@@ -3,6 +3,7 @@ name: Run Pytest Tests
 on:
   push:
     branches: [ core ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ core ]
 
@@ -13,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,6 +41,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -49,6 +54,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Check release metadata
+        run: python scripts/check_release.py
+
+      - name: Check release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          # Restore the authoritative tag object if checkout materialized a commit ref.
+          git fetch --force --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          python scripts/check_release.py --tag "$RELEASE_TAG"
+
+      - name: Check agent contracts
+        run: python scripts/sync_agent_metadata.py --check
+
       - name: Run Pytest
         run: pytest
 
@@ -58,6 +78,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -74,4 +96,5 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           cd /tmp
-          python -c "from dynamic_models import DynamicLotSizing; from inventory_models import BasicEOQ"
+          python -c "from dynamic_models import DynamicLotSizing; from inventory_models import BasicEOQ; from ie_models_agent import run; assert run({'operation': 'list_models', 'params': {}})['success']"
+          printf '%s' '{"operation":"list_models","params":{}}' | ie-models-agent
