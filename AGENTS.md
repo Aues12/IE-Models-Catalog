@@ -6,22 +6,32 @@ Python library for inventory management models (EOQ, EPQ, Discount, Backorder).
 
 ## Key Commands
 
-- **Run tests**: `.venv/bin/python -m pytest Tests/ -v`
-- **Run single test file**: `.venv/bin/python -m pytest Tests/test_eoq_logic.py`
+- **Run tests**: `.venv/bin/python -m pytest tests/ -v`
+- **Run single test file**: `.venv/bin/python -m pytest tests/test_eoq_logic.py`
 
 ## Structure
 
 - Main module: `inventory_models.py` (contains classes: `BasicEOQ`, `EPQ`, `DiscountEOQ`, `BackorderEOQ`)
-- Tests: `Tests/`
+- Tests: `tests/`
 
 ## Environment
 
 - Python 3.12 in `.venv`
 - Dependencies: numpy, matplotlib, plotly, pytest
-- No pyproject.toml - uses simple module structure
+- Package metadata and Ruff configuration: `pyproject.toml`
+- Shared result costs and numeric validation: `model_common.py`
+- Dynamic models: `dynamic_models.py` (Wagner–Whitin and Silver–Meal)
 
 ## Testing Notes
 
 - Tests use pytest
 - Test files import directly from `inventory_models`
-- All 46 tests pass
+- Include regression and independent optimality checks when changing model logic.
+- Quality checks: `.venv/bin/ruff check .` and `.venv/bin/ruff format --check .`
+
+## Model documentation
+
+- Follow `docs/models/TEMPLATE.md` when adding a model or method.
+- Keep shared definitions in `docs/models/conventions.md`; link them from individual guides.
+- Verify worked examples against executable public-API examples and link actual validation tests.
+- Update the catalog index when a model is added or its supported scope changes.

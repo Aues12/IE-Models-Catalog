@@ -1,5 +1,7 @@
 # Basic EOQ: Formulation
 
+See the [model catalog](models/README.md) for current API examples, shared units, and verification evidence. In these derivations, basic/EPQ/backorder cost formulas exclude the constant acquisition component; discount comparisons include it.
+
 This document explains the **Basic Economic Order Quantity (EOQ)** model, its core concept, and the mathematical derivation.
 
 ---
@@ -60,11 +62,6 @@ This represents the **Economic Order Quantity**, the quantity that minimizes tot
 
 ---
 
-This is the documentation for **EOQ with planned shortages (Backorder EOQ)**, providing both the conceptual understanding and the mathematical derivation.
-
----
-
-
 # EPQ: Formulation
 
 This is the documentation for the **Economic Production Quantity (EPQ)** model, which extends the classic **EOQ** **model** by accounting for a finite production rate.
@@ -123,7 +120,7 @@ Annual costs consist of:
 
 $TC(Q) = \frac{D S}{Q} + \frac{H Q}{2} \left(1 - \frac{D}{P}\right)$
 
-- There is no *order cost* since units are produced internally.
+- The setup cost per production run is represented by `ordering_cost` in the shared API.
 
 ---
 
@@ -159,7 +156,7 @@ In a standard EOQ model, the goal is to minimize total costs by balancing:
 
 The **Backorder EOQ** model introduces **planned shortages**, where negative inventory (backorders) is allowed. This adds:
 
-- **Shortage cost (P)** – annual cost per unit of unmet demand, representing penalties or lost sales.
+- **Shortage cost (P)** – cost per backlogged unit per year of waiting; unmet demand is eventually fulfilled, not lost.
 
 Total cost now consists of **Ordering + Holding + Shortage costs**.
 
@@ -224,7 +221,7 @@ Solve for **Q***:
 
 $Q∗ = \sqrt{\frac{2 D S (H+P)}{H P}}$
 
-This matches the implementation in `Backorder_EOQ.calculate_eoq`.
+This matches the implementation in `BackorderEOQ.calculate_eoq`.
 
 ---
 

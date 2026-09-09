@@ -1,8 +1,27 @@
 import math
+from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.express as px
+
+from model_common import CostBreakdown, validate_number
+
+
+@dataclass(frozen=True)
+class EOQResult:
+    """Continuous-quantity optimum; costs and cycle time use one demand period."""
+
+    order_quantity: float
+    unit_price: float
+    cycle_time: float
+    max_inventory: float
+    max_backorder: float
+    costs: CostBreakdown
+
+    @property
+    def total_cost(self) -> float:
+        return self.costs.total_cost
 
 
 class BasicEOQ:
@@ -31,20 +50,69 @@ class BasicEOQ:
         * lead_time (float): Lead time for reorder point calculation.
 
         """
-        # Check parameter boundaries
-        if demand_rate <= 0 or ordering_cost <= 0 or price <= 0 or holding_rate <= 0:
-            raise ValueError(
-                "All core parameters (demand_rate, price, holding_rate, ordering_cost) must be positive."
-            )
+        for name, value in (
+            ("price", price),
+            ("demand_rate", demand_rate),
+            ("ordering_cost", ordering_cost),
+            ("holding_rate", holding_rate),
+        ):
+            validate_number(name, value, positive=True)
+        if lead_time is not None:
+            validate_number("lead_time", lead_time)
 
         self.price = price
         self.demand_rate = demand_rate
         self.ordering_cost = ordering_cost
         self.holding_rate = holding_rate
-        self.holding_cost = self.price * self.holding_rate
 
         self.lead_time = lead_time
         self.eoq_value = None
+
+    @property
+    def holding_cost(self) -> float:
+        return self.price * self.holding_rate
+
+    def _unit_price(self, quantity: float) -> float:
+        return self.price
+
+    def _stock_limits(self, quantity: float) -> tuple[float, float]:
+        return quantity, 0.0
+
+    def calculate_costs(self, quantity: float) -> CostBreakdown:
+        """Return purchase, ordering, holding and shortage costs per demand period."""
+        validate_number("quantity", quantity, positive=True)
+        price = self._unit_price(quantity)
+        maximum, backlog = self._stock_limits(quantity)
+        # Backorders and on-hand stock each occupy a fraction of the cycle.
+        if backlog:
+            average_inventory = maximum**2 / (2 * quantity)
+            shortage = self.shortage_cost * backlog**2 / (2 * quantity)
+        else:
+            average_inventory = maximum / 2
+            shortage = 0.0
+        return CostBreakdown(
+            purchase=self.demand_rate * price,
+            ordering=self.demand_rate * self.ordering_cost / quantity,
+            holding=average_inventory * price * self.holding_rate,
+            shortage=shortage,
+        )
+
+    def solve(self) -> EOQResult:
+        """Return the optimum and a common, structured cost breakdown.
+
+        Quantities are continuous. Cycle time is in demand periods, not days.
+        Total cost includes purchase cost for all EOQ-family models.
+        """
+        quantity = self.calculate_eoq()
+        maximum, backlog = self._stock_limits(quantity)
+        return EOQResult(
+            order_quantity=quantity,
+            unit_price=self._unit_price(quantity),
+            cycle_time=quantity / self.demand_rate,
+            max_inventory=maximum,
+            max_backorder=backlog,
+            costs=self.calculate_costs(quantity),
+        )
 
     def calculate_eoq(self, analysis_mode: bool = False):
         """
@@ -103,38 +171,32 @@ class BasicEOQ:
         Returns:
             The reorder point in units.
         """
+        validate_number("lead_time", lead_time)
+        validate_number("safety_stock", safety_stock)
+        validate_number("days_of_operation", days_of_operation, positive=True)
         self.lead_time = lead_time
+        return self.demand_rate / days_of_operation * lead_time + safety_stock
 
-        if self.lead_time is not None:
-            if self.lead_time < 0 or safety_stock < 0:
-                raise ValueError("Lead time and safety stock cannot be negative.")
-            if days_of_operation <= 0:
-                raise ValueError("Days of operation must be a positive number.")
-
-            daily_demand = self.demand_rate / days_of_operation
-            reorder_point = (daily_demand * self.lead_time) + safety_stock
-
-            return reorder_point
-
-        elif self.lead_time is None:
-            raise ValueError(
-                "Lead time must be provided for reorder point calculation."
-            )
-
-    def inventory_level(self, t, analysis_mode: bool = False):
-        t = t / 365
+    def inventory_level(
+        self, t, analysis_mode: bool = False, *, days_of_operation: float = 365
+    ):
+        """Return stock at elapsed operating days within a repeating cycle."""
+        validate_number("days_of_operation", days_of_operation, positive=True)
+        t = np.asarray(t, dtype=float)
+        if not np.all(np.isfinite(t)) or np.any(t < 0):
+            raise ValueError("t must contain finite, non-negative times.")
+        t = t / days_of_operation
         D = self.demand_rate
-        Q = self.eoq_value if self.eoq_value else self.calculate_eoq()
+        Q = self.calculate_eoq()
         T = Q / D
         if analysis_mode:
             print("--- Inventory Level Calculation Analysis ---")
             print(f"Demand Rate (D): {D}")
             print(f"Economic Order Quantity (Q): {Q}")
-            print(f"Cycle Time (T) (days): {T * 365}")
-            print(f"Time (t) (days): {t * 365}")
+            print(f"Cycle Time (T) (days): {T * days_of_operation}")
+            print(f"Time (t) (days): {t * days_of_operation}")
             print(f"Inventory Level at time t: {Q - D * (t % T)}")
-        else:
-            return Q - D * (t % T)
+        return Q - D * (t % T)
 
     def graph(self, renderer: str = "plotly"):
         # X is for days
@@ -185,12 +247,14 @@ class EPQ(BasicEOQ):
             lead_time=lead_time,
         )
 
-        if production_rate <= 0:
-            raise ValueError("Production rate must be positive.")
+        validate_number("production_rate", production_rate, positive=True)
         if production_rate <= demand_rate:
             raise ValueError("Production rate must be greater than demand rate.")
 
         self.production_rate = production_rate
+
+    def _stock_limits(self, quantity: float) -> tuple[float, float]:
+        return quantity * (1 - self.demand_rate / self.production_rate), 0.0
 
     def calculate_eoq(self, analysis_mode: bool = False):
         """
@@ -234,11 +298,18 @@ class EPQ(BasicEOQ):
 
         return epq
 
-    def inventory_level(self, t, analysis_mode: bool = False):
-        t = t / 365
+    def inventory_level(
+        self, t, analysis_mode: bool = False, *, days_of_operation: float = 365
+    ):
+        """Return stock at elapsed operating days within a repeating cycle."""
+        validate_number("days_of_operation", days_of_operation, positive=True)
+        t = np.asarray(t, dtype=float)
+        if not np.all(np.isfinite(t)) or np.any(t < 0):
+            raise ValueError("t must contain finite, non-negative times.")
+        t = t / days_of_operation
         D = self.demand_rate
         P = self.production_rate
-        Q = self.eoq_value if self.eoq_value else self.calculate_eoq()
+        Q = self.calculate_eoq()
         T = Q / D
         mod_t = t % T
         production_end = Q / P
@@ -256,13 +327,12 @@ class EPQ(BasicEOQ):
             print(f"Demand Rate (D): {D}")
             print(f"Production Rate (P): {P}")
             print(f"Economic Order Quantity (Q): {Q}")
-            print(f"Cycle Time (T) (days): {T * 365}")
-            print(f"Time (t) (days): {t * 365}")
+            print(f"Cycle Time (T) (days): {T * days_of_operation}")
+            print(f"Time (t) (days): {t * days_of_operation}")
             print(f"Max Inventory Level: {max_inventory}")
             print(f"Inventory Level at time t: {inventory}")
 
-        else:
-            return inventory
+        return inventory
 
 
 class DiscountEOQ(BasicEOQ):
@@ -290,31 +360,41 @@ class DiscountEOQ(BasicEOQ):
             lead_time=lead_time,
         )
 
-        if not discount_rates:
-            raise ValueError("discount_rates dictionary must be provided.")
+        if not isinstance(discount_rates, dict) or not discount_rates:
+            raise ValueError("discount_rates must be a non-empty dictionary.")
 
-        # Always evaluate the undiscounted base-price tier. Copy the caller's
-        # mapping so constructing a model does not mutate the supplied input.
         normalized_discounts = {0: 0.0, **discount_rates}
-
-        if not all(0 <= rate < 1 for rate in normalized_discounts.values()):
-            raise ValueError("All discount rates must be between 0 and 1.")
-
+        for threshold, rate in normalized_discounts.items():
+            validate_number("discount threshold", threshold)
+            validate_number("discount rate", rate)
+            if rate >= 1:
+                raise ValueError("Discount rates must be less than 1.")
+        tiers = sorted(normalized_discounts.items())
+        if any(right[1] < left[1] for left, right in zip(tiers, tiers[1:])):
+            raise ValueError("Discount rates must not decrease as quantity increases.")
         self.discount_rates = normalized_discounts
-        self.sorted_discounts = sorted(normalized_discounts.items())
+        self.sorted_discounts = tiers
+
+    def _unit_price(self, quantity: float) -> float:
+        rate = next(
+            rate
+            for minimum, rate in reversed(self.sorted_discounts)
+            if quantity >= minimum
+        )
+        return self.price * (1 - rate)
 
     def calculate_total_cost(self, quantity, price):
         """
         Calculates the total annual inventory cost for a given quantity and price.
         Total Cost = Purchase Cost + Ordering Cost + Holding Cost
         """
-        purchase_cost = self.demand_rate * price
-        # Prevent division by zero if quantity is zero
-        ordering_cost_component = (
-            (self.demand_rate / quantity) * self.ordering_cost if quantity > 0 else 0
+        validate_number("quantity", quantity, positive=True)
+        validate_number("price", price, positive=True)
+        return (
+            self.demand_rate * price
+            + self.demand_rate / quantity * self.ordering_cost
+            + quantity / 2 * price * self.holding_rate
         )
-        holding_cost_component = (quantity / 2) * (price * self.holding_rate)
-        return purchase_cost + ordering_cost_component + holding_cost_component
 
     def calculate_eoq(self, analysis_mode=False):
         """
@@ -345,10 +425,10 @@ class DiscountEOQ(BasicEOQ):
                 print("discounted price: ", discounted_price)
 
             # Determine the Upper Bound for the current quantity range
-            # Upper bound is 1 unit less then the next price break
+            # Continuous tiers are [minimum, next minimum).
             max_qty = float("inf")
             if i + 1 < len(quantity_breaks):
-                max_qty = quantity_breaks[i + 1] - 1
+                max_qty = quantity_breaks[i + 1]
 
             # Calculate holding cost for the current price
             H = discounted_price * self.holding_rate
@@ -357,13 +437,11 @@ class DiscountEOQ(BasicEOQ):
             if analysis_mode:
                 print("candidate eoq", i + 1, ": ", candidate_eoq)
 
-            # Determine the valid order quantity for this tier
-            if candidate_eoq > max_qty:
-                order_quantity = max_qty
-            elif candidate_eoq < min_qty:
-                order_quantity = min_qty
-            else:
-                order_quantity = candidate_eoq
+            # With nondecreasing discounts, an optimum beyond this tier
+            # is dominated by a candidate at a later price tier.
+            order_quantity = max(candidate_eoq, min_qty)
+            if order_quantity >= max_qty:
+                continue
 
             if analysis_mode:
                 print("order quantity: ", order_quantity)
@@ -413,11 +491,17 @@ class BackorderEOQ(BasicEOQ):
         # Inherits from BasicEOQ
         super().__init__(price, demand_rate, ordering_cost, holding_rate, lead_time)
 
-        if shortage_cost <= 0:
-            raise ValueError("shortage_cost must be positive.")
+        validate_number("shortage_cost", shortage_cost, positive=True)
 
         self.shortage_cost = (
             shortage_cost  # P: shortage/backorder cost per unit per year
+        )
+
+    def _stock_limits(self, quantity: float) -> tuple[float, float]:
+        holding = self.price * self.holding_rate
+        return (
+            quantity * self.shortage_cost / (holding + self.shortage_cost),
+            quantity * holding / (holding + self.shortage_cost),
         )
 
     def calculate_eoq(self, analysis_mode=False):
@@ -465,10 +549,17 @@ class BackorderEOQ(BasicEOQ):
             "TotalCost": total_cost,
         }
 
-    def inventory_level(self, t, analysis_mode: bool = False):
-        t = t / 365
+    def inventory_level(
+        self, t, analysis_mode: bool = False, *, days_of_operation: float = 365
+    ):
+        """Return stock at elapsed operating days within a repeating cycle."""
+        validate_number("days_of_operation", days_of_operation, positive=True)
+        t = np.asarray(t, dtype=float)
+        if not np.all(np.isfinite(t)) or np.any(t < 0):
+            raise ValueError("t must contain finite, non-negative times.")
+        t = t / days_of_operation
         D = self.demand_rate
-        Q = self.eoq_value if self.eoq_value else self.calculate_eoq()
+        Q = self.calculate_eoq()
         H = self.holding_cost
         P = self.shortage_cost
         T = Q / D
@@ -490,8 +581,8 @@ class BackorderEOQ(BasicEOQ):
             print("--- Inventory Level Calculation Analysis ---")
             print(f"Demand Rate (D): {D}")
             print(f"Economic Order Quantity (Q): {Q}")
-            print(f"Cycle Time (T) (days): {T * 365}")
-            print(f"Time (t) (days): {t * 365}")
+            print(f"Cycle Time (T) (days): {T * days_of_operation}")
+            print(f"Time (t) (days): {t * days_of_operation}")
             print(f"Max Inventory Level: {max_inventory}")
             print(f"Max Backorder Level: {max_backorder}")
             print(f"Inventory Level at time t: {inventory}")

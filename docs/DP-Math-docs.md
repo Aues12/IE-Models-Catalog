@@ -1,5 +1,7 @@
 # Dynamic Lot Sizing Mathematics
 
+For the current implementation, initial-stock handling, and verification evidence, see the [Wagner–Whitin model guide](models/wagner_whitin.md).
+
 ## 1. Purpose of Dynamic Lot Sizing
 
 Dynamic Lot Sizing (DLS) is used when demand changes from period to period.
@@ -326,23 +328,24 @@ The algorithm produces:
 2. order periods
 3. order quantities
 
-Example output format:
+For the example above, one setup costs 100 and holding costs `20*2 + 15*2*2 = 100`. The resulting plan is:
 
 ```text
-Minimum total cost: 190
+Minimum total cost: 200
 Orders:
-- Period 1: order 30 units
-- Period 3: order 15 units
+- Period 1: order 45 units
 ```
 
 ## 10. Complexity
 
 The Wagner-Whitin algorithm checks each period t and each possible previous order point j.
 
-Therefore, the basic implementation has:
+The recurrence itself is quadratic. In this repository, however, interval holding costs are recomputed with a third nested loop:
 
 ```text
-Time complexity: O(T²)
+DP recurrence: O(T²)
+Current cost-matrix preparation: O(T³)
+Current end-to-end implementation: O(T³) time, O(T²) matrix storage
 ```
 
 This is usually acceptable for small and medium-sized planning horizons.

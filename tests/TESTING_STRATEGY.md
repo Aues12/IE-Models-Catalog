@@ -98,3 +98,20 @@ Recommended additions:
 * Use small hand-checkable demand sequences as regression fixtures
 * Test constructor validation for empty demand, negative demand, and negative costs
 * Assert returned `order_quantities`, `order_periods`, and `total_cost` together so the plan and its cost stay consistent
+
+## Implemented independent checks
+
+`test_independent_optimality.py` enumerates feasible integer order schedules for all
+four-period demand vectors with entries 0, 1, or 2, three initial-stock levels,
+and nine setup/holding-cost combinations (2,187 scenarios per solver). Its oracle
+uses period stock balances and actual order counts rather than the solver's DP
+recurrence. Wagner–Whitin must match the minimum cost; Silver–Meal must produce a
+feasible plan with a consistent cost no lower than that minimum.
+
+EOQ-family optima are checked against independently evaluated cost surfaces,
+including a two-dimensional quantity/backorder-fraction grid for planned shortages.
+These bounded grids are regression evidence, not proofs for arbitrary real inputs.
+
+`test_model_contracts.py` checks finite input validation, continuous discount
+boundaries, initial-stock accounting, analysis-mode return values, time units,
+and consistency between legacy methods and the common cost/result API.
