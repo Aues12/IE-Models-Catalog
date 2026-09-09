@@ -1,6 +1,6 @@
 # API reference
 
-[Back to the README](../README.md)
+[Back to the README](../README.md) · [Model guides](models/README.md)
 
 This reference covers model parameters, return values, validation rules, time
 units, and cost conventions. Start with the [quick start](../README.md#quick-start)

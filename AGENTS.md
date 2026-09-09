@@ -28,3 +28,10 @@ Python library for inventory management models (EOQ, EPQ, Discount, Backorder).
 - Test files import directly from `inventory_models`
 - Include regression and independent optimality checks when changing model logic.
 - Quality checks: `.venv/bin/ruff check .` and `.venv/bin/ruff format --check .`
+
+## Model documentation
+
+- Follow `docs/models/TEMPLATE.md` when adding a model or method.
+- Keep shared definitions in `docs/models/conventions.md`; link them from individual guides.
+- Verify worked examples against executable public-API examples and link actual validation tests.
+- Update the catalog index when a model is added or its supported scope changes.

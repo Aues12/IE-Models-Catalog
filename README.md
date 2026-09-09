@@ -136,6 +136,7 @@ See the [examples guide](examples/README.md) for expected results and interpreta
 
 | Guide | Contents |
 | --- | --- |
+| [Model catalog](docs/models/README.md) | Assumptions, units, worked examples, and verification for each model |
 | [API reference](docs/API_REFERENCE.md) | Model examples, parameters, results, units, and cost conventions |
 | [EOQ model guide](docs/EOQ-Model-docs.md) | Background on the EOQ family |
 | [EOQ mathematics](docs/EOQ-Math-docs.md) | Formulas and derivations |
