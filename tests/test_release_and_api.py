@@ -153,3 +153,43 @@ def test_release_tag_identity_and_annotation(release_repo):
     )
     with pytest.raises(ValueError, match="HEAD"):
         check_release(release_repo, "v0.5.0")
+
+
+def test_ci_restores_annotated_tag_from_remote(release_repo, tmp_path):
+    """Reproduce a checkout tag ref pointing at the peeled commit, then recover."""
+
+    def git(*args):
+        return subprocess.run(
+            ["git", *args], cwd=release_repo, check=True, capture_output=True, text=True
+        )
+
+    git("init")
+    git("add", ".")
+    git(
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-m",
+        "release",
+    )
+    git(
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "tag",
+        "-a",
+        "v0.5.0",
+        "-m",
+        "release",
+    )
+    remote = tmp_path / "remote.git"
+    git("clone", "--bare", str(release_repo), str(remote))
+    git("remote", "add", "origin", str(remote))
+    git("update-ref", "refs/tags/v0.5.0", "HEAD")
+    with pytest.raises(ValueError, match="annotated"):
+        check_release(release_repo, "v0.5.0")
+    git("fetch", "--force", "--no-tags", "origin", "refs/tags/v0.5.0:refs/tags/v0.5.0")
+    assert check_release(release_repo, "v0.5.0") == "0.5.0"

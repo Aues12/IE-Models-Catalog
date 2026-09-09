@@ -61,7 +61,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: python scripts/check_release.py --tag "$RELEASE_TAG"
+        run: |
+          # Restore the authoritative tag object if checkout materialized a commit ref.
+          git fetch --force --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          python scripts/check_release.py --tag "$RELEASE_TAG"
 
       - name: Check agent contracts
         run: python scripts/sync_agent_metadata.py --check
