@@ -1,7 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 import numpy as np
+
+from model_common import CostBreakdown, validate_number
 
 
 @dataclass
@@ -17,6 +19,8 @@ class DLSResult:
     order_quantities: List[float]
     total_cost: float
     order_periods: List[int]
+    costs: CostBreakdown = field(default_factory=CostBreakdown)
+    inventory_levels: List[float] = field(default_factory=list)
 
 
 class DynamicLotSizing:
@@ -25,26 +29,61 @@ class DynamicLotSizing:
         self._validate_parameters()
 
     def _validate_parameters(self):
-        if not self.data.demand:
-            raise ValueError("Demand list cannot be empty.")
+        if not isinstance(self.data.demand, (list, tuple)) or not self.data.demand:
+            raise ValueError("Demand must be a non-empty list or tuple.")
+        validate_number("ordering_cost", self.data.ordering_cost)
+        validate_number("holding_cost", self.data.holding_cost)
+        validate_number("initial_inventory", self.data.initial_inventory)
+        for demand in self.data.demand:
+            validate_number("demand", demand)
 
-        if self.data.ordering_cost < 0:
-            raise ValueError("Ordering cost cannot be negative.")
-
-        if self.data.holding_cost < 0:
-            raise ValueError("Holding cost cannot be negative.")
-
-        if any(demand < 0 for demand in self.data.demand):
-            raise ValueError("Demand values cannot be negative.")
-
-    # ------------------ Main Solver ------------------------------
     def solve(self, method: str = "wagner-whitin") -> DLSResult:
-        if method == "wagner-whitin":
-            return self._solve_wagner_whitin()
-        elif method == "silver-meal":
-            return self._solve_silver_meal()
-        else:
+        """Plan net demand, then account for actual end-of-period inventory.
+
+        Holding cost includes initial stock remaining at each period end,
+        including residual stock at the end of the planning horizon.
+        """
+        if method not in {"wagner-whitin", "silver-meal"}:
             raise ValueError(f"Unknown method: {method}")
+        self._validate_parameters()
+        remaining = self.data.initial_inventory
+        net_demand = []
+        for demand in self.data.demand:
+            consumed = min(remaining, demand)
+            net_demand.append(demand - consumed)
+            remaining -= consumed
+        working = DynamicLotSizing(
+            DLSInput(
+                demand=net_demand,
+                ordering_cost=self.data.ordering_cost,
+                holding_cost=self.data.holding_cost,
+            )
+        )
+        if method == "wagner-whitin":
+            result = working._solve_wagner_whitin()
+        else:
+            result = working._solve_silver_meal()
+
+        inventory = self.data.initial_inventory
+        levels = []
+        for demand, order in zip(self.data.demand, result.order_quantities):
+            inventory += order - demand
+            # Avoid a tiny negative balance from floating-point cancellation.
+            if inventory < 0 and np.isclose(inventory, 0, atol=1e-10, rtol=0):
+                inventory = 0.0
+            levels.append(inventory)
+        costs = CostBreakdown(
+            ordering=sum(q > 0 for q in result.order_quantities)
+            * self.data.ordering_cost,
+            holding=sum(levels) * self.data.holding_cost,
+        )
+        return DLSResult(
+            order_quantities=result.order_quantities,
+            total_cost=costs.total_cost,
+            order_periods=result.order_periods,
+            costs=costs,
+            inventory_levels=levels,
+        )
 
     # ------------------ Wagner-Whitin Algorithm ------------------
     def _compute_cost_matrix(self):

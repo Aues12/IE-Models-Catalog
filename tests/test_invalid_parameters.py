@@ -60,5 +60,5 @@ from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
     ],
 )
 def test_constructor_validation(model_class, invalid_params):
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         model_class(**invalid_params)

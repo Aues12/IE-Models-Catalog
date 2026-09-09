@@ -2,14 +2,9 @@
 
 All notable changes to this project are documented here.
 
-The project does not yet use release tags, so entries are grouped by the date of the relevant commits. Dates before the first tagged release should not be interpreted as package versions.
+The project did not historically use release tags. Versions through `0.4.1` were assigned retrospectively from Git history when Semantic Versioning was adopted; their dates mark the end of each development milestone rather than an original tagged release.
 
 ## Unreleased
-
-### Fixed
-
-* Made both dynamic lot-sizing methods skip leading and all-zero demand periods without creating a zero-quantity order or charging an unnecessary setup cost.
-* Made `EPQ`, `DiscountEOQ`, and `BackorderEOQ` retain their calculated order quantity consistently with `BasicEOQ`.
 
 ### Changed
 
@@ -18,27 +13,27 @@ The project does not yet use release tags, so entries are grouped by the date of
 * Added an English Wagner–Whitin walkthrough and retained the Turkish original with a `_TR` suffix.
 * Added package build metadata while preserving the existing `inventory_models` and `dynamic_models` imports.
 
-## 2026-08-29
+## [0.4.1] - 2026-08-29
 
 ### Fixed
 
 * Ensured `DiscountEOQ` always evaluates the undiscounted base-price tier, even when callers omit the `0` quantity break.
 * Avoided mutating the `discount_rates` mapping supplied by callers.
 * Added a regression test for a discount threshold that is too high to be economical.
+* Made both dynamic lot-sizing methods skip leading and all-zero demand periods without creating a zero-quantity order or charging an unnecessary setup cost.
+* Made `EPQ`, `DiscountEOQ`, and `BackorderEOQ` retain their calculated order quantity consistently with `BasicEOQ`.
 
 ### Documentation
 
 * Refreshed the README with the current inventory-model scope, dynamic lot-sizing API, validation rules, examples, and test command.
 
-## 2026-06-30
+## [0.4.0] - 2026-06-30
 
 ### Documentation
 
 * Added notes for the dynamic inventory models.
 
-## 2026-04-27 to 2026-04-30
-
-### Added
+### Added (2026-04-27 to 2026-04-30)
 
 * Added `DynamicLotSizing`, `DLSInput`, and `DLSResult` for time-phased demand planning.
 * Added the exact Wagner–Whitin solver and the Silver–Meal heuristic.
@@ -50,7 +45,9 @@ The project does not yet use release tags, so entries are grouped by the date of
 * Added explicit `method` selection to the dynamic lot-sizing solver.
 * Updated README, requirements, and testing documentation for the dynamic-model scope.
 
-## 2026-01-15 to 2026-03-06
+## [0.3.0] - 2026-03-06
+
+_Changes developed from 2026-01-15 to 2026-03-06._
 
 ### Added
 
@@ -59,11 +56,13 @@ The project does not yet use release tags, so entries are grouped by the date of
 
 ### Changed
 
-* Changed `DiscountEOQ.calculate_eoq()` to return the chosen order quantity; detailed output is available through `analysis_mode=True`.
+* Changed `DiscountEOQ.calculate_eoq()` in a backward-incompatible API update to return the chosen order quantity; detailed output is available through `analysis_mode=True`.
 * Added NumPy, Plotly, and Matplotlib to the project requirements.
 * Updated README examples and installation instructions.
 
-## 2025-09-02 to 2025-11-29
+## [0.2.0] - 2025-11-29
+
+_Changes developed from 2025-09-02 to 2025-11-29._
 
 ### Added
 
@@ -74,10 +73,12 @@ The project does not yet use release tags, so entries are grouped by the date of
 
 ### Changed
 
-* Renamed inventory model classes to CapWords style.
+* Renamed the public inventory model classes from `Basic_EOQ`, `Discount_EOQ`, and `Backorder_EOQ` to the backward-incompatible CapWords names `BasicEOQ`, `DiscountEOQ`, and `BackorderEOQ`.
 * Updated continuous integration to run against the `core` branch.
 
-## 2025-08-19 to 2025-08-31
+## [0.1.0] - 2025-08-31
+
+_Changes developed from 2025-08-19 to 2025-08-31._
 
 ### Added
 
