@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ie-models-catalog"
-version = "0.1.0"
+version = "0.5.0"
 description = "Inventory management models for industrial engineering."
 readme = "README.md"
 requires-python = ">=3.11"

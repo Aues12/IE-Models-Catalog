@@ -59,7 +59,7 @@ See the [testing strategy](../tests/TESTING_STRATEGY.md) for details.
 The [CI workflow](../.github/workflows/python-tests.yml) runs lint and formatting
 checks, tests both supported Python versions, builds the package, and checks
 imports from the installed wheel. It is triggered by pushes and pull requests
-targeting `core`.
+targeting `core`, and version-tag pushes.
 
 ## Contribution policy
 
@@ -72,3 +72,8 @@ Run `python scripts/sync_agent_metadata.py --check` to detect contract/registry 
 After changing `SKILL.yaml`, regenerate with `python scripts/sync_agent_metadata.py`.
 The pytest suite includes adapter, subprocess, schema, and registry checks.
 See [contract management](../standards/CONTRACTS.md) for the full change workflow.
+
+## Versioning
+
+Run `python scripts/check_release.py` to verify package/changelog agreement.
+For annotated release-tag checks and the SemVer policy, see [releasing](RELEASING.md).

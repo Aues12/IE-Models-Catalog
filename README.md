@@ -198,3 +198,8 @@ External pull requests are currently not accepted; see the
 ## License
 
 [MIT](LICENSE).
+
+## Releases
+
+Version policy and release checks are documented in the [release guide](docs/RELEASING.md).
+See the [changelog](CHANGELOG.md) for changes and compatibility notes.

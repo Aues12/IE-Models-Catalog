@@ -183,9 +183,27 @@ EOQ `total_cost` includes purchase cost for every variant. For backward compatib
 
 `holding_cost` is derived from `price * holding_rate`; configure those inputs rather than assigning a separate holding cost. For a new scenario, constructing a new model is recommended.
 
+## Compatibility and preferred entrypoints
+
+All five EOQ variants provide `calculate_total_cost(quantity)` as shorthand for
+`calculate_costs(quantity).total_cost`, including acquisition costs. Both discount
+variants also retain `calculate_total_cost(quantity, price)` for legacy callers;
+that explicit-price overload deliberately bypasses automatic tier billing.
+Prefer the one-argument call, especially for incremental discounts.
+
+`BackorderEOQ.calculate_cycle_metrics(constraints=None)` delegates to `solve()`
+and accepts the same per-call constraints. Its historical dictionary keys remain
+unchanged, including `TotalCost` meaning ordering + holding + shortage only.
+Use `solve().total_cost` for the complete cost including purchases.
+
+Defaults and old positional calls remain supported. No legacy method is removed
+or deprecated in 0.5.0. Version and migration policy: [releasing](RELEASING.md).
+
 ## Inventory profiles and plots
 
-EOQ-family models provide `inventory_level(t, days_of_operation=365)` where `t` is a scalar or array of non-negative elapsed operating days. Use the same `days_of_operation` in reorder-point and profile calculations. Profiles accept the same optional `constraints` as `solve()` and calculate the selected optimum on each call, and `analysis_mode=True` prints explanations while still returning the same numeric result. The default `graph()` displays a 365-day profile.
+EOQ-family models provide `inventory_level(t, days_of_operation=365)` where `t` is a scalar or array of non-negative elapsed operating days. Use the same `days_of_operation` in reorder-point and profile calculations. Profiles accept the same optional `constraints` as `solve()` and calculate the selected optimum on each call, and `analysis_mode=True` prints explanations while still returning the same numeric result. The default `graph()` displays a 365-day profile. Pass `days_of_operation` and
+`constraints` to plot the same policy and time convention as `inventory_level()`.
+An unsupported renderer raises `ValueError`.
 
 `graph()` renders an inventory profile with Plotly by default, or Matplotlib when requested:
 

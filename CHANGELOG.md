@@ -6,8 +6,23 @@ The project did not historically use release tags. Versions through `0.4.1` were
 
 ## Unreleased
 
+## [0.5.0] - 2026-09-09
+
+### API compatibility
+
+* Standardized `calculate_total_cost(quantity)` across all EOQ variants; the discount models retain the legacy explicit-price overload.
+* Added constraints and operating-day selection to `graph()`, and constraints to backorder cycle metrics. Unknown renderers now raise `ValueError`.
+* Preserved legacy backorder `TotalCost` as relevant cost; `solve().total_cost` includes purchases.
+
+### Release management
+
+* Reconciled package metadata with the historical changelog at 0.5.0; earlier changelog versions remain retrospective, untagged milestones.
+* Added automated package/changelog/tag agreement checks and a documented SemVer policy.
+
+
 ### Added
 
+* Added shared EOQ results and cost breakdowns, independent optimality checks, model guides, method comparisons and sensitivity examples.
 * Added optional EOQ minimum/maximum quantities, integer orders and pack multiples across all five variants.
 * Added IncrementalDiscountEOQ with marginal-band billing and average-acquisition-price holding.
 * Added period-varying dynamic costs, fixed lead time, explicit release/receipt results, and infeasible-plan errors.

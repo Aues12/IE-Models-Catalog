@@ -64,8 +64,9 @@ Tests also cover exact bounds, fractional thresholds, invalid and infeasible inp
 
 ## Limitations
 
-Constraints are passed per call; `calculate_eoq()`, `graph()` and calls without
-constraints retain the continuous behavior. Pass the same constraints to
+Constraints are passed per call; `calculate_eoq()` and calls without constraints
+retain the continuous behavior. `graph(constraints=..., days_of_operation=...)`
+and backorder `calculate_cycle_metrics(constraints=...)` use the same constrained policy. Pass the same constraints to
 `inventory_level()` to inspect the constrained policy. `calculate_costs(quantity)`
 and the agent's `evaluate_eoq` evaluate a supplied lot without enforcing constraints.
 Backorder stock/backlog splits remain continuous even for whole-item order quantities.

@@ -100,6 +100,10 @@ class BasicEOQ:
             shortage=shortage,
         )
 
+    def calculate_total_cost(self, quantity: float) -> float:
+        """Return the complete cost per demand period for a supplied quantity."""
+        return self.calculate_costs(quantity).total_cost
+
     def _quantity_regions(self):
         """Yield lower-inclusive/upper-exclusive price regions and their optima."""
         yield 0.0, math.inf, self.calculate_eoq()
@@ -237,10 +241,21 @@ class BasicEOQ:
             print(f"Inventory Level at time t: {Q - D * (t % T)}")
         return Q - D * (t % T)
 
-    def graph(self, renderer: str = "plotly"):
-        # X is for days
-        X = np.arange(1, 366, 1)
-        Y = self.inventory_level(X)
+    def graph(
+        self,
+        renderer: str = "plotly",
+        *,
+        days_of_operation: int = 365,
+        constraints: OrderConstraints | None = None,
+    ):
+        """Display one demand period using the same policy as solve/profiles."""
+        if renderer not in {"plotly", "matplotlib"}:
+            raise ValueError("renderer must be 'plotly' or 'matplotlib'.")
+        validate_number("days_of_operation", days_of_operation, positive=True)
+        X = np.arange(1, 366) * (days_of_operation / 365)
+        Y = self.inventory_level(
+            X, days_of_operation=days_of_operation, constraints=constraints
+        )
 
         if renderer == "matplotlib":
             import matplotlib.pyplot as plt
@@ -449,11 +464,14 @@ class DiscountEOQ(BasicEOQ):
         )
         return self.price * (1 - rate)
 
-    def calculate_total_cost(self, quantity, price):
+    def calculate_total_cost(self, quantity, price=None):
         """
-        Calculates the total annual inventory cost for a given quantity and price.
-        Total Cost = Purchase Cost + Ordering Cost + Holding Cost
+        Return complete cost, selecting tiers automatically when price is omitted.
+
+        An explicit price preserves legacy flat-price evaluation.
         """
+        if price is None:
+            return super().calculate_total_cost(quantity)
         validate_number("quantity", quantity, positive=True)
         validate_number("price", price, positive=True)
         return (
@@ -586,33 +604,17 @@ class BackorderEOQ(BasicEOQ):
 
         return Q_opt
 
-    def calculate_cycle_metrics(self):
-        """Returns:
+    def calculate_cycle_metrics(self, constraints: OrderConstraints | None = None):
+        """Return legacy cycle metrics; TotalCost excludes purchase cost.
 
-        * Optimal quantity Q*,
-        * Max inventory,
-        * Max backorder,
-        * and Annual Total Cost."""
-
-        D, S, H, P = (
-            self.demand_rate,
-            self.ordering_cost,
-            self.holding_cost,
-            self.shortage_cost,
-        )
-        Q = self.calculate_eoq()
-        max_inventory = (P / (H + P)) * Q
-        max_backorder = (H / (H + P)) * Q
-        total_cost = (
-            (D * S / Q)
-            + (H * max_inventory**2 / (2 * Q))
-            + (P * max_backorder**2 / (2 * Q))
-        )
+        Prefer solve() for explicitly named costs including purchases.
+        """
+        result = self.solve(constraints=constraints)
         return {
-            "Q_opt": Q,
-            "S_max": max_inventory,
-            "B_max": max_backorder,
-            "TotalCost": total_cost,
+            "Q_opt": result.order_quantity,
+            "S_max": result.max_inventory,
+            "B_max": result.max_backorder,
+            "TotalCost": result.costs.relevant_cost,
         }
 
     def inventory_level(

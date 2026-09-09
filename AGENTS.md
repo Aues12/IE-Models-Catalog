@@ -72,6 +72,7 @@ CI checks Python 3.11 and 3.12. Package/dependency configuration lives in
 `pyproject.toml`. Install development tools with `python -m pip install -e ".[dev]"`.
 
 ```bash
+.venv/bin/python scripts/check_release.py
 .venv/bin/python scripts/sync_agent_metadata.py --check
 .venv/bin/python -m pytest tests/ -q
 .venv/bin/ruff check .
