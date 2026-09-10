@@ -1,6 +1,6 @@
 # Model catalog
 
-[Project README](../../README.md) · [API reference](../API_REFERENCE.md)
+[Architecture overview](../ARCHITECTURE_OVERVIEW.md) · [Project README](../../README.md) · [API reference](../API_REFERENCE.md)
 
 Each guide connects the decision problem to its assumptions, mathematics, public
 API, and verification evidence. Start with Basic EOQ, then choose a guide based

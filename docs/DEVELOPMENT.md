@@ -1,6 +1,9 @@
 # Development guide
 
-[Back to the README](../README.md)
+[Architecture overview](ARCHITECTURE_OVERVIEW.md) · [Maintenance task paths](../AGENTS.md) · [Project home](../README.md)
+
+This is the development procedure in the **Modify** path. Start with the shared
+overview and maintenance guide when you need to decide which layer to change.
 
 The development target is Python 3.12. Continuous integration tests Python 3.11
 and 3.12. Clone the repository and activate a virtual environment using the
@@ -48,7 +51,8 @@ python -m build
 
 Distributions are written to `dist/`. Package metadata, runtime dependencies,
 and development dependencies are defined in [pyproject.toml](../pyproject.toml).
-The installed modules are `inventory_models`, `dynamic_models`, and `model_common`.
+The public import namespace is `ie_models_catalog`; historical modules
+`inventory_models`, `dynamic_models`, and `model_common` remain installed.
 
 ## Verification strategy
 

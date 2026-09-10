@@ -79,7 +79,11 @@ def _solve_eoq(params):
     if not result.order_quantity or result.order_quantity <= 0:
         raise NumericalError("Optimal quantity is outside the supported numeric range.")
     return {
-        **asdict(result),
+        **{
+            key: value
+            for key, value in asdict(result).items()
+            if key != "production_rate"
+        },
         **({"constraints": asdict(constraints)} if constraints is not None else {}),
         "model": params["model"],
         "costs": _costs(result.costs),

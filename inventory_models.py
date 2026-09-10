@@ -8,12 +8,13 @@ from model_common import (
     InfeasiblePlanError,
     OrderConstraints,
     validate_number,
+    validate_times,
 )
 
 
 @dataclass(frozen=True)
 class EOQResult:
-    """Continuous-quantity optimum; costs and cycle time use one demand period."""
+    """Snapshot of an EOQ policy; costs and cycle time use one demand period."""
 
     order_quantity: float
     unit_price: float
@@ -21,10 +22,66 @@ class EOQResult:
     max_inventory: float
     max_backorder: float
     costs: CostBreakdown
+    production_rate: float | None = None
 
     @property
     def total_cost(self) -> float:
         return self.costs.total_cost
+
+    @property
+    def cost_basis(self) -> dict:
+        return {
+            "horizon": "demand_period",
+            "periods": 1,
+            "quantity_unit": "item",
+            "currency": "caller_defined",
+        }
+
+    def inventory_level(self, t, *, days_of_operation: float = 365):
+        """Evaluate this saved policy without re-solving or accessing a model."""
+        validate_number("days_of_operation", days_of_operation, positive=True)
+        times = validate_times(t) / days_of_operation
+        demand = self.order_quantity / self.cycle_time
+        phase = times % self.cycle_time
+        if self.production_rate is not None:
+            production_end = self.order_quantity / self.production_rate
+            return np.where(
+                phase <= production_end,
+                (self.production_rate - demand) * phase,
+                self.max_inventory - demand * (phase - production_end),
+            )
+        return self.max_inventory - demand * phase
+
+    def graph(self, renderer: str = "plotly", *, days_of_operation: float = 365):
+        """Display a saved policy; no solver or mutable model is consulted."""
+        return _graph_policy(self, renderer, days_of_operation)
+
+
+def _graph_policy(result, renderer, days_of_operation):
+    if renderer not in {"plotly", "matplotlib"}:
+        raise ValueError("renderer must be 'plotly' or 'matplotlib'.")
+    validate_number("days_of_operation", days_of_operation, positive=True)
+    times = np.arange(1, 366) * (days_of_operation / 365)
+    levels = result.inventory_level(times, days_of_operation=days_of_operation)
+    if renderer == "matplotlib":
+        import matplotlib.pyplot as plt
+
+        plt.title("Inventory Level Over Time")
+        plt.plot(times, levels)
+        plt.xlabel("Days")
+        plt.ylabel("Inventory Level")
+        plt.grid()
+        plt.show()
+    else:
+        import plotly.express as px
+
+        figure = px.line(
+            x=times,
+            y=levels,
+            title="Inventory Level Over Time",
+            labels={"x": "Days", "y": "Inventory Level"},
+        )
+        figure.show()
 
 
 class BasicEOQ:
@@ -146,6 +203,7 @@ class BasicEOQ:
             max_inventory=maximum,
             max_backorder=backlog,
             costs=self.calculate_costs(quantity),
+            production_rate=getattr(self, "production_rate", None),
         )
 
     def calculate_eoq(self, analysis_mode: bool = False):
@@ -219,64 +277,29 @@ class BasicEOQ:
         days_of_operation: float = 365,
         constraints: OrderConstraints | None = None,
     ):
-        """Return stock at elapsed operating days within a repeating cycle."""
+        """Solve the current model and evaluate its profile; use a result to reuse a policy."""
         validate_number("days_of_operation", days_of_operation, positive=True)
-        t = np.asarray(t, dtype=float)
-        if not np.all(np.isfinite(t)) or np.any(t < 0):
-            raise ValueError("t must contain finite, non-negative times.")
-        t = t / days_of_operation
-        D = self.demand_rate
-        Q = (
-            self.calculate_eoq()
-            if constraints is None
-            else self._constrained_quantity(constraints)
-        )
-        T = Q / D
+        times = validate_times(t)
+        result = self.solve(constraints=constraints)
+        levels = result.inventory_level(times, days_of_operation=days_of_operation)
         if analysis_mode:
-            print("--- Inventory Level Calculation Analysis ---")
-            print(f"Demand Rate (D): {D}")
-            print(f"Economic Order Quantity (Q): {Q}")
-            print(f"Cycle Time (T) (days): {T * days_of_operation}")
-            print(f"Time (t) (days): {t * days_of_operation}")
-            print(f"Inventory Level at time t: {Q - D * (t % T)}")
-        return Q - D * (t % T)
+            print(f"Order quantity: {result.order_quantity}; inventory level: {levels}")
+        return levels
 
     def graph(
         self,
         renderer: str = "plotly",
         *,
-        days_of_operation: int = 365,
+        days_of_operation: float = 365,
         constraints: OrderConstraints | None = None,
     ):
-        """Display one demand period using the same policy as solve/profiles."""
+        """Solve the current model and plot its policy; use result.graph() to reuse it."""
         if renderer not in {"plotly", "matplotlib"}:
             raise ValueError("renderer must be 'plotly' or 'matplotlib'.")
         validate_number("days_of_operation", days_of_operation, positive=True)
-        X = np.arange(1, 366) * (days_of_operation / 365)
-        Y = self.inventory_level(
-            X, days_of_operation=days_of_operation, constraints=constraints
+        return self.solve(constraints=constraints).graph(
+            renderer, days_of_operation=days_of_operation
         )
-
-        if renderer == "matplotlib":
-            import matplotlib.pyplot as plt
-
-            plt.title("Inventory Level Over Time")
-            plt.plot(X, Y)
-            plt.xlabel("Days")
-            plt.ylabel("Inventory Level")
-            plt.grid()
-            plt.show()
-
-        if renderer == "plotly":
-            import plotly.express as px
-
-            my_graph = px.line(
-                x=X,
-                y=Y,
-                title="Inventory Level Over Time",
-                labels={"x": "Days", "y": "Inventory Level"},
-            )
-            my_graph.show()
 
 
 class EPQ(BasicEOQ):
@@ -355,51 +378,6 @@ class EPQ(BasicEOQ):
             print("-----------------------------------")
 
         return epq
-
-    def inventory_level(
-        self,
-        t,
-        analysis_mode: bool = False,
-        *,
-        days_of_operation: float = 365,
-        constraints: OrderConstraints | None = None,
-    ):
-        """Return stock at elapsed operating days within a repeating cycle."""
-        validate_number("days_of_operation", days_of_operation, positive=True)
-        t = np.asarray(t, dtype=float)
-        if not np.all(np.isfinite(t)) or np.any(t < 0):
-            raise ValueError("t must contain finite, non-negative times.")
-        t = t / days_of_operation
-        D = self.demand_rate
-        P = self.production_rate
-        Q = (
-            self.calculate_eoq()
-            if constraints is None
-            else self._constrained_quantity(constraints)
-        )
-        T = Q / D
-        mod_t = t % T
-        production_end = Q / P
-        max_inventory = Q * (1 - D / P)
-        # Generates arrays with truth values for production and depletion phases
-        production_phase = mod_t <= production_end
-        depletion_phase = mod_t > production_end
-
-        inventory = production_phase * ((P - D) * mod_t) + depletion_phase * (
-            max_inventory - D * (mod_t - production_end)
-        )
-
-        if analysis_mode:
-            print("--- Inventory Level Calculation Analysis ---")
-            print(f"Demand Rate (D): {D}")
-            print(f"Production Rate (P): {P}")
-            print(f"Economic Order Quantity (Q): {Q}")
-            print(f"Cycle Time (T) (days): {T * days_of_operation}")
-            print(f"Time (t) (days): {t * days_of_operation}")
-            print(f"Max Inventory Level: {max_inventory}")
-            print(f"Inventory Level at time t: {inventory}")
-
-        return inventory
 
 
 class DiscountEOQ(BasicEOQ):
@@ -616,55 +594,6 @@ class BackorderEOQ(BasicEOQ):
             "B_max": result.max_backorder,
             "TotalCost": result.costs.relevant_cost,
         }
-
-    def inventory_level(
-        self,
-        t,
-        analysis_mode: bool = False,
-        *,
-        days_of_operation: float = 365,
-        constraints: OrderConstraints | None = None,
-    ):
-        """Return stock at elapsed operating days within a repeating cycle."""
-        validate_number("days_of_operation", days_of_operation, positive=True)
-        t = np.asarray(t, dtype=float)
-        if not np.all(np.isfinite(t)) or np.any(t < 0):
-            raise ValueError("t must contain finite, non-negative times.")
-        t = t / days_of_operation
-        D = self.demand_rate
-        Q = (
-            self.calculate_eoq()
-            if constraints is None
-            else self._constrained_quantity(constraints)
-        )
-        H = self.holding_cost
-        P = self.shortage_cost
-        T = Q / D
-        max_inventory = (P / (H + P)) * Q
-        max_backorder = (H / (H + P)) * Q
-
-        mod_t = t % T
-        inventory_end = max_inventory / D
-
-        # Generates arrays with truth values for inventory and backorder phases
-        inventory_phase = mod_t <= inventory_end
-        backorder_phase = mod_t > inventory_end
-
-        inventory = inventory_phase * (max_inventory - D * mod_t) + backorder_phase * (
-            -D * (mod_t - inventory_end)
-        )
-
-        if analysis_mode:
-            print("--- Inventory Level Calculation Analysis ---")
-            print(f"Demand Rate (D): {D}")
-            print(f"Economic Order Quantity (Q): {Q}")
-            print(f"Cycle Time (T) (days): {T * days_of_operation}")
-            print(f"Time (t) (days): {t * days_of_operation}")
-            print(f"Max Inventory Level: {max_inventory}")
-            print(f"Max Backorder Level: {max_backorder}")
-            print(f"Inventory Level at time t: {inventory}")
-
-        return inventory
 
 
 class IncrementalDiscountEOQ(DiscountEOQ):

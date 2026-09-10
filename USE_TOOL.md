@@ -1,8 +1,13 @@
 # Using IE Models Catalog as an agent tool
 
-This guide describes invocation and result interpretation. Read it before using
-or changing the JSON adapter. [SKILL.yaml](SKILL.yaml) is the canonical local
-machine-readable contract; [AGENTS.md](AGENTS.md) governs maintenance.
+This is the calling procedure for agents and tool users. Start with the shared
+[architecture overview](docs/ARCHITECTURE_OVERVIEW.md) to understand the library,
+adapter and model guarantees, then use this guide for invocation and interpretation.
+Read it in full before invoking or changing the adapter.
+
+[SKILL.yaml](SKILL.yaml) is the canonical machine-readable contract. For changes
+to the tool itself, follow [AGENTS.md](AGENTS.md) and the
+[contract maintenance rules](standards/CONTRACTS.md).
 
 ## Discover and invoke
 
@@ -122,6 +127,9 @@ Dynamic costs may be scalars or arrays of exactly the demand horizon's length.
 holding on actual period-end stock. Initial inventory must cover demand until the
 first possible receipt; pre-horizon and pipeline orders are not supported.
 
+The Python-only EOQ snapshot field `production_rate` is not serialized in the
+version-1 `solve_eoq` result. The transport remains defined by its schema.
+
 ## Result interpretation
 
 - `solve_eoq`: quantity, unit price, cycle time, stock/backlog maxima, costs,
@@ -164,7 +172,7 @@ library modules. Python itself may write bytecode caches unless disabled.
 Plotting libraries are loaded only when the library's separate `graph()` is used.
 For report generation, use the explicit [examples](examples/README.md).
 
-## Recovery and maintenance
+## Recover from a failed call
 
 For `INFEASIBLE_PLAN`, review bounds/pack compatibility or the stock needed before
 the first receipt; do not silently relax constraints. For `INVALID_REQUEST`, inspect the operation's schema and model assumptions before
@@ -173,19 +181,13 @@ inspect input scale and arithmetic range. For `EXECUTION_ERROR`, report a minima
 reproducer instead of repeatedly retrying unchanged input.
 
 Machine schemas are in [ie_models_agent/schemas](ie_models_agent/schemas).
-Defaults are annotations and are applied explicitly by the adapter, not injected
-by the JSON Schema validator. The full manifest is JSON-compatible YAML 1.2,
-allowing standard-library parsing without adding a YAML runtime dependency.
+Defaults are applied by the adapter; callers do not need to expand them manually.
+For exact operation fields, consult [SKILL.yaml](SKILL.yaml).
 
-After changing the canonical manifest:
+## Modifying this interface
 
-```bash
-python scripts/sync_agent_metadata.py
-python scripts/sync_agent_metadata.py --check
-python -m pytest tests/ -q
-```
-
-Generated registries, packaged contract, and schemas must not be edited manually.
-See [standards](standards/README.md) for ownership and compatibility rules.
-An external agent-tools registry is a separately reviewed integration copy;
-this repository never writes to it automatically.
+Calling the tool does not require regenerating metadata. If you are changing its
+behavior or contract, return to the [maintenance task paths](AGENTS.md#establish-meaning-then-select-task-context).
+The authoritative [contract maintenance procedure](standards/CONTRACTS.md)
+covers canonical format, defaults, schema generation, synchronization, compatibility
+and external registry ownership.

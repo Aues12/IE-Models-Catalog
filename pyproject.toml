@@ -43,7 +43,7 @@ Issues = "https://github.com/Aues12/IE-Models-Catalog/issues"
 ie-models-agent = "ie_models_agent.tool:main"
 
 [tool.setuptools]
-packages = ["ie_models_agent", "ie_models_agent.schemas"]
+packages = ["ie_models_catalog", "ie_models_agent", "ie_models_agent.schemas"]
 py-modules = ["inventory_models", "dynamic_models", "model_common"]
 
 [tool.ruff]

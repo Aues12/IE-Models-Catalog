@@ -1,6 +1,10 @@
 # Agent integration standards
 
-[Project README](../README.md) · [Operational contract](../USE_TOOL.md)
+[Architecture overview](../docs/ARCHITECTURE_OVERVIEW.md) · [Maintenance guide](../AGENTS.md) · [Calling procedure](../USE_TOOL.md)
+
+This is the **Modify** path: detailed rules for changing the repository.
+For conceptual orientation, return to the shared overview; for an existing tool
+call, use the calling procedure.
 
 These local standards adapt the capability/interface separation of `agent-tools`
 and the library-first adapter pattern used by `BookBarcode`. This repository is

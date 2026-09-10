@@ -7,7 +7,20 @@ The catalog includes five EOQ-family models, two dynamic lot-sizing methods,
 inventory plots, and mathematical walkthroughs. It is intended for learning and
 analyzing deterministic inventory scenarios.
 
-[Quick start](#quick-start) · [Models](#choose-a-model) · [API reference](docs/API_REFERENCE.md) · [Development](docs/DEVELOPMENT.md)
+## Find your path
+
+| I want to… | Start here | Continue with |
+| --- | --- | --- |
+| **Understand** the project | [Architecture at a glance](docs/ARCHITECTURE_OVERVIEW.md) | [Model catalog](docs/models/README.md) and its assumptions |
+| **Use** the Python library | [Quick start](#quick-start) | [API reference](docs/API_REFERENCE.md), [model guides](docs/models/README.md), [examples](examples/README.md) |
+| **Use** the agent interface | [Agent interface](#agent-interface) | [Calling procedure](USE_TOOL.md) and JSON examples |
+| **Modify** or maintain it | [Maintenance guide](AGENTS.md) | [Development](docs/DEVELOPMENT.md), [standards](standards/README.md), [releases](docs/RELEASING.md) |
+
+The mathematical library serves both Python users and an agent adapter. The adapter
+translates JSON requests into library calls; a contract describes the interface,
+schemas validate its structure, and registries support discovery. The
+[shared overview](docs/ARCHITECTURE_OVERVIEW.md) explains these relationships before
+introducing implementation files.
 
 ## Installation
 
@@ -30,7 +43,7 @@ Suppose an item costs 50 per unit, annual demand is 1,200 units, and each order
 costs 75 to place. Annual holding cost is 20% of the item's price.
 
 ```python
-from inventory_models import BasicEOQ
+from ie_models_catalog import BasicEOQ
 
 model = BasicEOQ(
     price=50,
@@ -126,8 +139,10 @@ Align time horizons and included cost components before comparing totals.
 Detailed fields, validation rules, and compatibility notes are in the
 [API reference](docs/API_REFERENCE.md#common-results-and-costs).
 
-To view a stock profile, call `model.graph()` on an EOQ-family model. Plotly is
-the default; use `model.graph(renderer="matplotlib")` for Matplotlib.
+Saved EOQ results support `result.inventory_level(...)` and `result.graph()`
+without re-solving or repeating constraints. Model-level `model.graph()` solves
+the current model. Plotly is the default; select `renderer="matplotlib"` for
+Matplotlib. See the [API contract](docs/API_CONTRACT.md) for the distinction.
 
 ## Explore comparisons and sensitivity
 
@@ -157,10 +172,13 @@ python -m ie_models_agent < examples/agent/solve_eoq.json
 
 The installed `ie-models-agent` command uses the same interface. Responses include
 cost horizons and exact/heuristic guarantees. Read [USE_TOOL.md](USE_TOOL.md) for
-operations, input units, errors, and limits; the [local registry](registry/tool_registry.json)
-and [standards](standards/README.md) explain discovery and maintenance.
+operations, input units, errors, and limits. No registry maintenance is needed
+to call the tool.
 
-## Documentation
+## Learn the models
+
+For usage and maintenance, follow the [paths above](#find-your-path). These
+references provide deeper explanations when you need them.
 
 | Guide | Contents |
 | --- | --- |

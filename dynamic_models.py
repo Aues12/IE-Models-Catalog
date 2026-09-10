@@ -1,12 +1,16 @@
 """Deterministic lot sizing with period costs and explicit release/receipt timing."""
 
 from dataclasses import dataclass, field
-from numbers import Integral
 from typing import List
 
 import numpy as np
 
-from model_common import CostBreakdown, InfeasiblePlanError, validate_number
+from model_common import (
+    CostBreakdown,
+    InfeasiblePlanError,
+    validate_count,
+    validate_number,
+)
 
 
 @dataclass
@@ -27,6 +31,15 @@ class DLSResult:
     inventory_levels: List[float] = field(default_factory=list)
     receipt_quantities: List[float] = field(default_factory=list)
     receipt_periods: List[int] = field(default_factory=list)
+
+    @property
+    def cost_basis(self) -> dict:
+        return {
+            "horizon": "planning_horizon",
+            "periods": len(self.order_quantities),
+            "quantity_unit": "item",
+            "currency": "caller_defined",
+        }
 
 
 def _cost_series(name, value, periods):
@@ -54,14 +67,7 @@ class DynamicLotSizing:
             "holding_cost", self.data.holding_cost, len(self.data.demand)
         )
         validate_number("initial_inventory", self.data.initial_inventory)
-        if (
-            isinstance(self.data.lead_time, bool)
-            or not isinstance(self.data.lead_time, Integral)
-            or self.data.lead_time < 0
-        ):
-            raise ValueError(
-                "lead_time must be a non-negative integer number of periods."
-            )
+        self._lead_time = validate_count("lead_time", self.data.lead_time)
         for demand in self.data.demand:
             validate_number("demand", demand)
 
@@ -81,7 +87,7 @@ class DynamicLotSizing:
             consumed = min(remaining, demand)
             net_demand.append(demand - consumed)
             remaining -= consumed
-        lead = self.data.lead_time
+        lead = self._lead_time
         if any(q > 0 for q in net_demand[:lead]):
             raise InfeasiblePlanError(
                 "Initial inventory cannot cover demand before the first possible receipt; pre-horizon orders are not supported."
@@ -120,8 +126,8 @@ class DynamicLotSizing:
         """Cost of receipt i covering i..j, in quadratic time and storage."""
         periods = len(demand)
         costs = np.full((periods, periods), np.inf)
-        for i in range(self.data.lead_time, periods):
-            total = self._ordering[i - self.data.lead_time]
+        for i in range(self._lead_time, periods):
+            total = self._ordering[i - self._lead_time]
             accumulated_holding = 0.0
             for j in range(i, periods):
                 if j > i:
@@ -140,7 +146,7 @@ class DynamicLotSizing:
                 min_cost[end] = min_cost[end - 1]
                 continue
             min_cost[end] = float("inf")
-            for start in range(self.data.lead_time, end):
+            for start in range(self._lead_time, end):
                 candidate = min_cost[start] + matrix[start, end - 1]
                 if candidate < min_cost[end]:
                     min_cost[end] = candidate
@@ -169,7 +175,7 @@ class DynamicLotSizing:
             if demand[t] == 0:
                 t += 1
                 continue
-            total = self._ordering[t - self.data.lead_time]
+            total = self._ordering[t - self._lead_time]
             previous_average = total
             accumulated_holding = 0.0
             end = t + 1

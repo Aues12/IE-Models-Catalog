@@ -1,5 +1,11 @@
 # Contract and registry management
 
+[Architecture overview](../docs/ARCHITECTURE_OVERVIEW.md) · [Calling procedure](../USE_TOOL.md) · [Maintenance guide](../AGENTS.md)
+
+This page governs interface and discovery changes. To invoke an existing operation,
+use the calling procedure; synchronization is a maintainer responsibility.
+Introductory documents summarize and link these rules without redefining them.
+
 ## Sources of truth
 
 | Concern | Canonical source | Derived / consuming surface |
@@ -18,7 +24,8 @@ JSON Schema Draft 2020-12, not agent-tools-specific pseudo-types.
 
 Schema checks validate structure. Cross-field invariants such as production rate
 above demand, nondecreasing discounts, and finite numerical results are also
-validated by the adapter/library. Schema defaults do not mutate caller input.
+validated by the adapter/library. Schema defaults are annotations and do not mutate
+caller input; the adapter applies defaults explicitly.
 
 ## Synchronization
 
