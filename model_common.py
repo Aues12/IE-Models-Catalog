@@ -17,6 +17,26 @@ def validate_number(name: str, value: float, *, positive: bool = False) -> None:
         raise ValueError(f"{name} must be a finite, {bound} number.")
 
 
+def validate_count(name: str, value, *, positive: bool = False) -> int:
+    """Validate an integer-valued real (including JSON 1.0), excluding booleans."""
+    validate_number(name, value, positive=positive)
+    if value != int(value):
+        raise ValueError(f"{name} must be an integer.")
+    return int(value)
+
+
+def validate_times(value):
+    """Validate scalar/array times before conversion; preserve shape, reject coercion."""
+    import numpy as np
+
+    values = np.asarray(value, dtype=object)
+    if not values.size:
+        raise ValueError("t must not be empty.")
+    for number in values.flat:
+        validate_number("t", number)
+    return np.asarray(values, dtype=float)
+
+
 @dataclass(frozen=True)
 class CostBreakdown:
     """Costs over the result's stated horizon, in the caller's currency.
@@ -63,12 +83,12 @@ class OrderConstraints:
                 raise ValueError("max_quantity must be at least min_quantity.")
         if not isinstance(self.integer, bool):
             raise ValueError("integer must be a boolean.")
-        if self.order_multiple is not None and (
-            isinstance(self.order_multiple, bool)
-            or not isinstance(self.order_multiple, int)
-            or self.order_multiple < 1
-        ):
-            raise ValueError("order_multiple must be a positive integer.")
+        if self.order_multiple is not None:
+            object.__setattr__(
+                self,
+                "order_multiple",
+                validate_count("order_multiple", self.order_multiple, positive=True),
+            )
 
     def candidates(self, lower: float, upper: float, optimum: float) -> list[float]:
         """Return convex-tier candidates within [lower, upper) and global bounds."""

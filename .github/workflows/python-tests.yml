@@ -96,5 +96,5 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           cd /tmp
-          python -c "from dynamic_models import DynamicLotSizing; from inventory_models import BasicEOQ; from ie_models_agent import run; assert run({'operation': 'list_models', 'params': {}})['success']"
+          python -c "from ie_models_catalog import DynamicLotSizing, BasicEOQ, OrderConstraints; assert BasicEOQ(10, 100, 5).solve(OrderConstraints(40, 40)).inventory_level(0) == 40; from ie_models_agent import run; assert run({'operation': 'list_models', 'params': {}})['success']"
           printf '%s' '{"operation":"list_models","params":{}}' | ie-models-agent

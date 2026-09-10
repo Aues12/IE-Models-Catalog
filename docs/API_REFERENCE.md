@@ -2,6 +2,9 @@
 
 [Back to the README](../README.md) · [Model guides](models/README.md)
 
+The [public API contract](API_CONTRACT.md) defines imports, units, validation,
+saved-policy behavior and compatibility.
+
 This reference covers model parameters, return values, validation rules, time
 units, and cost conventions. Start with the [quick start](../README.md#quick-start)
 for a first calculation. Use `solve()` for structured results and

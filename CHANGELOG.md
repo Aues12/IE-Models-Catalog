@@ -6,6 +6,18 @@ The project did not historically use release tags. Versions through `0.4.1` were
 
 ## Unreleased
 
+### Added
+
+* Added the `ie_models_catalog` public import namespace while retaining identical legacy classes.
+* Added saved EOQ policy profiles/graphs and explicit native result cost-horizon metadata.
+* Added cross-model API contract tests and a documented compatibility/side-effect policy.
+
+### Changed
+
+* Shared profile evaluation across the EOQ family; saved results retain EPQ production parameters independently of model mutation.
+* Reject coerced strings/booleans and empty profile arrays; accept integer-valued real pack sizes and dynamic lead times consistently with JSON schemas.
+* Preserve the agent version-1 payload by excluding Python-only snapshot fields during serialization.
+
 ### Fixed
 
 * Set the pytest repository import path explicitly so both console and module invocations can collect release-script tests; align CI with `python -m pytest`.

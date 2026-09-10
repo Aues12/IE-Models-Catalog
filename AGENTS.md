@@ -7,35 +7,43 @@ Keep model assumptions, worked examples, and independent validation aligned with
 production behavior. Agent readiness adds a discoverable execution boundary to
 that library, not a second implementation of its mathematics.
 
-Read in order:
+## Establish meaning, then select task context
 
-1. This file for ownership and change policy.
-2. `USE_TOOL.md` in full before invoking or changing the agent adapter.
-3. `SKILL.yaml` for its canonical machine-readable contract.
-4. `registry/tool_registry.json` and `registry/model_registry.json` for discovery.
-5. `standards/` and the relevant guide under `docs/models/` for affected work.
+First read the shared [architecture overview](docs/ARCHITECTURE_OVERVIEW.md):
+purpose, model families, library/adapter relationship and the distinction between
+schema validity and mathematical correctness. Humans and agents use the same
+conceptual model. This overview provides orientation; this guide and the standards
+remain authoritative for maintenance.
 
-## Architecture
+Then classify the task and load the additional context below. Do not replace
+repository understanding with an isolated file-level instruction.
 
-- `inventory_models.py`: BasicEOQ, EPQ, DiscountEOQ, IncrementalDiscountEOQ, BackorderEOQ and profiles.
-- `dynamic_models.py`: Wagner–Whitin and Silver–Meal, initial-stock accounting.
-- `model_common.py`: numeric validation and shared cost breakdowns.
-- `ie_models_agent/`: strict JSON translation, installed module/console entrypoints,
-  and packaged contract resources. Public Python entrypoint: `run(request)`.
-- `SKILL.yaml`: canonical operation/model metadata, schemas, limits, and contract version.
-- `scripts/sync_agent_metadata.py`: generates integration copies and checks drift.
-- `tests/`: numerical, independent-optimality, API, and adapter contract tests.
-- `docs/models/`: common model standard and individual learning/reference guides.
+| Task | Additional context |
+| --- | --- |
+| Model or mathematical change | Relevant implementation, [model guide](docs/models/README.md), [shared conventions](docs/models/conventions.md), independent numerical tests |
+| Public Python API change | [API contract](docs/API_CONTRACT.md), affected models and public API/compatibility tests |
+| Agent call or adapter change | Read [USE_TOOL.md](USE_TOOL.md) in full before invoking or changing the adapter; relevant operations in [SKILL.yaml](SKILL.yaml), adapter implementation and tests |
+| Contract/interface change | [Contract rules](standards/CONTRACTS.md), canonical manifest, generator and schema/dispatch tests |
+| Discovery metadata change | [Registry ownership and synchronization](standards/CONTRACTS.md#synchronization), generator and relevant generated registry |
+| Release/package change | [Release guide](docs/RELEASING.md), pyproject.toml, release checks and installed-package verification |
+| Documentation change | Reader-intent paths in [README](README.md#find-your-path), overview, and the affected authoritative references |
 
-Core formulas and planning algorithms must remain in the library. The adapter
-must use the public API, preserve structured errors, declare units/guarantees,
-and avoid plots, arbitrary file access, or dynamic execution from request data.
-Plotting imports belong inside `graph()` to avoid cache creation during agent calculations.
+Keep meaning context stable; replace task context as the work changes. If a local
+choice raises architectural uncertainty, return to the overview and
+[architecture rules](standards/ARCHITECTURE.md), reinterpret the task, then continue.
+Read additional rows when a change crosses responsibilities.
+
+## Architectural constraints
+
+The library owns mathematics; the adapter calls its public API. Preserve this
+separation, declared units/guarantees, and bounded execution. Detailed ownership,
+dependency and request-boundary rules are in [standards/ARCHITECTURE.md](standards/ARCHITECTURE.md).
+Public Python behavior and compatibility are defined in [docs/API_CONTRACT.md](docs/API_CONTRACT.md).
 
 ## Contract and registry ownership
 
-Follow `standards/CONTRACTS.md`. `SKILL.yaml` uses JSON-compatible YAML 1.2 and is
-parsed with the standard library. It is a tool contract, not a provider skill.
+[SKILL.yaml](SKILL.yaml) is the canonical machine-readable contract. Follow
+[standards/CONTRACTS.md](standards/CONTRACTS.md) for its format, ownership and maintenance rules.
 Do not manually edit derived registries, `ie_models_agent/contract.json`, or schemas.
 Regenerate them with `python scripts/sync_agent_metadata.py`.
 External agent-tools metadata is a separately maintained integration copy; never
