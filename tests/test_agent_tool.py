@@ -13,7 +13,13 @@ from jsonschema import Draft202012Validator
 
 from dynamic_models import DLSInput, DynamicLotSizing
 from ie_models_agent import run, tool
-from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
+from inventory_models import (
+    EPQ,
+    BackorderEOQ,
+    BasicEOQ,
+    DiscountEOQ,
+    IncrementalDiscountEOQ,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = {"price": 10, "demand_rate": 100, "ordering_cost": 5, "holding_rate": 0.2}
@@ -24,6 +30,17 @@ MODEL_CASES = [
     (
         "discount_eoq",
         DiscountEOQ,
+        {
+            "discount_tiers": [
+                {"minimum_quantity": 25.5, "discount_rate": 0.02},
+                {"minimum_quantity": 50, "discount_rate": 0.1},
+            ]
+        },
+        {"discount_rates": {25.5: 0.02, 50: 0.1}},
+    ),
+    (
+        "incremental_discount_eoq",
+        IncrementalDiscountEOQ,
         {
             "discount_tiers": [
                 {"minimum_quantity": 25.5, "discount_rate": 0.02},

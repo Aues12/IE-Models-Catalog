@@ -1,5 +1,7 @@
 """Cross-model policy snapshots, validation and compatibility guarantees."""
 
+from dataclasses import FrozenInstanceError
+
 import numpy as np
 import pytest
 
@@ -79,6 +81,19 @@ def test_epq_saved_profile_has_independent_expected_values():
     assert result.inventory_level(
         [0, 10, 20, 30, 40], days_of_operation=100
     ) == pytest.approx([0, 10, 20, 10, 0])
+
+
+def test_saved_result_is_frozen_and_profile_preserves_shape():
+    result = catalog.BasicEOQ(10, 100, 5).solve(catalog.OrderConstraints(40, 40))
+
+    with pytest.raises(FrozenInstanceError):
+        result.order_quantity = 50
+    with pytest.raises(FrozenInstanceError):
+        result.costs = catalog.CostBreakdown()
+
+    times = np.array([[0, 10], [20, 30]])
+    levels = result.inventory_level(times, days_of_operation=100)
+    assert levels.shape == times.shape
 
 
 def test_result_graph_does_not_reoptimize(monkeypatch):

@@ -2,7 +2,7 @@
 
 *Documented on: 2025-09-03*
 
-This document outlines a practical strategy for learning how to write structured and scalable tests for inventory models, especially those implemented in the EOQ (Economic Order Quantity) framework. The goal is not only to test correctness but to build long-term confidence in the models through good testing habits.
+This document outlines a practical strategy for writing structured and scalable tests for inventory models, especially those implemented in the EOQ (Economic Order Quantity) framework. The goal is not only to test correctness but to build long-term confidence in the models through good testing habits.
 
 ---
 
@@ -24,7 +24,7 @@ Writing a test is formalizing **trust** in the code, just like a scientific expe
 
 We begin with clear advantages:
 
-* Modular classes: `BasicEOQ`, `EPQ`, `DiscountEOQ`, `BackorderEOQ`
+* Modular classes: `BasicEOQ`, `EPQ`, `DiscountEOQ`, `IncrementalDiscountEOQ`, and `BackorderEOQ`
 * Pure mathematical logic: No database, no random behavior, no side effects
 * Consistent structure: Every model defines `calculate_eoq()` and `calculate_reorder_point()`
 
@@ -36,26 +36,23 @@ This means tests can be:
 
 ---
 
-## 🧪 Step 3: Learn by Writing Tests in 3 Waves
+## 🧪 Step 3: Organize tests by responsibility
 
-### 🔹 Wave 1: Behavioral Core Tests
+### 🔹 Layer 1: Contract and validation tests
 
-Focus: `.calculate_eoq()` across all models
+Use shared parametrized tests for behavior that all models promise:
 
-* ✅ Happy path: Does the EOQ formula return expected output for known inputs?
-* 🔁 Reproducibility: Does it return the same output every time it's called?
-* ❌ Validation: Does it reject bad inputs like zero or negative values?
+* finite, positive or non-negative input domains;
+* result/legacy API agreement;
+* profile and time-unit behavior;
+* common error types and constraint semantics.
 
-Example:
+Keep these checks in `test_model_contracts.py`, `test_invalid_parameters.py`,
+and `test_reorder_point.py` rather than repeating them in model-specific files.
 
-* `test_calculate_eoq_matches_formula`
-* `test_invalid_parameters_raise`
+### 🔹 Layer 2: Parametrization and scaling
 
----
-
-### 🔹 Wave 2: Parametrization and Scaling
-
-Once the base behavior is validated, apply **pytest parametrization**:
+Apply **pytest parametrization** to shared behavior:
 
 * Use `@pytest.mark.parametrize` to run the same test across multiple inputs
 * Feed test cases from structured data tables (even external JSON or CSV)
@@ -65,11 +62,11 @@ This phase emphasizes **abstraction**, **reuse**, and **clarity**.
 
 ---
 
-### 🔹 Wave 3: Model-Specific Features
+### 🔹 Layer 3: Model-specific and operational features
 
 Each model has unique behavior that deserves dedicated tests:
 
-* `DiscountEOQ`: test discount tier selection logic and total cost minimization
+* `DiscountEOQ` and `IncrementalDiscountEOQ`: test tier selection, billing, and total cost minimization
 * `BackorderEOQ`: test `calculate_cycle_metrics()` including `S_max`, `B_max`, and total cost
 * `EPQ`: enforce `production_rate > demand_rate`
 * All models: test variations of `calculate_reorder_point()` under different lead time and safety stock values
@@ -114,4 +111,10 @@ These bounded grids are regression evidence, not proofs for arbitrary real input
 
 `test_model_contracts.py` checks finite input validation, continuous discount
 boundaries, initial-stock accounting, analysis-mode return values, time units,
-and consistency between legacy methods and the common cost/result API.
+and consistency between legacy methods and the common cost/result API. The
+model-specific files retain only behavior that is not already covered by these
+shared contracts.
+
+`test_public_api.py` checks the public import namespace, saved-policy isolation,
+frozen result behavior, profile shape preservation, and agent serialization
+compatibility.

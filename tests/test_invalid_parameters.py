@@ -3,7 +3,13 @@
 
 import pytest
 
-from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
+from inventory_models import (
+    EPQ,
+    BackorderEOQ,
+    BasicEOQ,
+    DiscountEOQ,
+    IncrementalDiscountEOQ,
+)
 
 # --- Constructor validation, shared via parametrization ---------------------
 
@@ -39,6 +45,16 @@ from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
             ),
         ),
         (
+            IncrementalDiscountEOQ,
+            dict(
+                price=15,
+                demand_rate=1000,
+                ordering_cost=40,
+                holding_rate=0.25,
+                discount_rates={},
+            ),
+        ),
+        (
             BackorderEOQ,
             dict(
                 price=9,
@@ -56,6 +72,7 @@ from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
         "BasicEOQ | holding_rate<0",
         "EPQ | prod_rate<=demand",
         "DiscountEOQ | no tiers",
+        "IncrementalDiscountEOQ | no tiers",
         "BackorderEOQ | shortage_cost<=0",
     ],
 )
