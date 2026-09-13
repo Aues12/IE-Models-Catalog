@@ -6,7 +6,13 @@ import numpy as np
 import pytest
 
 from dynamic_models import DLSInput, DynamicLotSizing
-from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
+from inventory_models import (
+    EPQ,
+    BackorderEOQ,
+    BasicEOQ,
+    DiscountEOQ,
+    IncrementalDiscountEOQ,
+)
 from model_common import CostBreakdown
 
 
@@ -17,6 +23,7 @@ def models():
         EPQ(**common, production_rate=2000),
         BackorderEOQ(**common, shortage_cost=10),
         DiscountEOQ(**common, discount_rates={1: 0.001, 100: 0.05}),
+        IncrementalDiscountEOQ(**common, discount_rates={1: 0.001, 100: 0.05}),
     ]
 
 
@@ -90,6 +97,7 @@ def test_additional_inputs_are_validated(value):
             model.calculate_reorder_point(**kwargs)
 
 
+@pytest.mark.parametrize("model_class", [DiscountEOQ, IncrementalDiscountEOQ])
 @pytest.mark.parametrize(
     "tiers",
     [
@@ -103,9 +111,9 @@ def test_additional_inputs_are_validated(value):
         {10: 0.2, 20: 0.1},
     ],
 )
-def test_invalid_discount_tiers(tiers):
+def test_invalid_discount_tiers(model_class, tiers):
     with pytest.raises(ValueError):
-        DiscountEOQ(100, 1000, 50, discount_rates=tiers)
+        model_class(100, 1000, 50, discount_rates=tiers)
 
 
 def test_discount_does_not_choose_zero_quantity():

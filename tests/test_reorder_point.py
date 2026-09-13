@@ -3,7 +3,13 @@
 
 import pytest
 
-from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
+from inventory_models import (
+    EPQ,
+    BackorderEOQ,
+    BasicEOQ,
+    DiscountEOQ,
+    IncrementalDiscountEOQ,
+)
 
 # --- Parametrized ROP Tests for All Models ------------------------------------------------------
 
@@ -36,6 +42,16 @@ from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
             ),
         ),
         (
+            IncrementalDiscountEOQ,
+            dict(
+                price=10,
+                demand_rate=1000,
+                ordering_cost=50,
+                holding_rate=0.2,
+                discount_rates={0: 0.0, 100: 0.05},
+            ),
+        ),
+        (
             BackorderEOQ,
             dict(
                 price=10,
@@ -46,7 +62,7 @@ from inventory_models import EPQ, BackorderEOQ, BasicEOQ, DiscountEOQ
             ),
         ),
     ],
-    ids=["BasicEOQ", "EPQ", "DiscountEOQ", "BackorderEOQ"],
+    ids=["BasicEOQ", "EPQ", "DiscountEOQ", "IncrementalDiscountEOQ", "BackorderEOQ"],
 )
 def test_rop_calculation(ModelClass, init_kwargs):
     model = ModelClass(**init_kwargs)
@@ -88,6 +104,16 @@ def test_rop_calculation(ModelClass, init_kwargs):
             ),
         ),
         (
+            IncrementalDiscountEOQ,
+            dict(
+                price=10,
+                demand_rate=1000,
+                ordering_cost=50,
+                holding_rate=0.2,
+                discount_rates={0: 0.0, 100: 0.05},
+            ),
+        ),
+        (
             BackorderEOQ,
             dict(
                 price=10,
@@ -98,7 +124,7 @@ def test_rop_calculation(ModelClass, init_kwargs):
             ),
         ),
     ],
-    ids=["BasicEOQ", "EPQ", "DiscountEOQ", "BackorderEOQ"],
+    ids=["BasicEOQ", "EPQ", "DiscountEOQ", "IncrementalDiscountEOQ", "BackorderEOQ"],
 )
 @pytest.mark.parametrize(
     "kwargs",

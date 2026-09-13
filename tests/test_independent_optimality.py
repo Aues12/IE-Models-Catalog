@@ -74,14 +74,103 @@ def test_dynamic_solvers_against_exhaustive_feasible_plans():
 
 
 @pytest.mark.parametrize("kind", ["basic", "epq", "backorder", "discount"])
-def test_eoq_optimum_against_independent_cost_surface(kind):
-    params = dict(price=10, demand_rate=100, ordering_cost=5, holding_rate=0.2)
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        {
+            "name": "baseline",
+            "unit_price": 10,
+            "demand": 100,
+            "setup": 5,
+            "holding_rate": 0.2,
+            "production_ratio": 2,
+            "shortage": 3,
+        },
+        {
+            "name": "demand",
+            "unit_price": 10,
+            "demand": 1200,
+            "setup": 5,
+            "holding_rate": 0.2,
+            "production_ratio": 2,
+            "shortage": 3,
+        },
+        {
+            "name": "price",
+            "unit_price": 37,
+            "demand": 100,
+            "setup": 5,
+            "holding_rate": 0.2,
+            "production_ratio": 2,
+            "shortage": 3,
+        },
+        {
+            "name": "setup",
+            "unit_price": 10,
+            "demand": 100,
+            "setup": 80,
+            "holding_rate": 0.2,
+            "production_ratio": 2,
+            "shortage": 3,
+        },
+        {
+            "name": "holding",
+            "unit_price": 10,
+            "demand": 100,
+            "setup": 5,
+            "holding_rate": 0.65,
+            "production_ratio": 2,
+            "shortage": 3,
+        },
+        {
+            "name": "production",
+            "unit_price": 10,
+            "demand": 100,
+            "setup": 5,
+            "holding_rate": 0.2,
+            "production_ratio": 1.25,
+            "shortage": 3,
+        },
+        {
+            "name": "shortage",
+            "unit_price": 10,
+            "demand": 100,
+            "setup": 5,
+            "holding_rate": 0.2,
+            "production_ratio": 2,
+            "shortage": 11,
+        },
+        {
+            "name": "combined",
+            "unit_price": 9,
+            "demand": 1500,
+            "setup": 45,
+            "holding_rate": 0.22,
+            "production_ratio": 3,
+            "shortage": 3,
+        },
+    ],
+    ids=lambda scenario: scenario["name"],
+)
+def test_eoq_optimum_against_independent_cost_surface(kind, scenario):
+    unit_price = scenario["unit_price"]
+    demand = scenario["demand"]
+    setup = scenario["setup"]
+    holding_rate = scenario["holding_rate"]
+    production_ratio = scenario["production_ratio"]
+    shortage = scenario["shortage"]
+    params = dict(
+        price=unit_price,
+        demand_rate=demand,
+        ordering_cost=setup,
+        holding_rate=holding_rate,
+    )
     if kind == "basic":
         model = BasicEOQ(**params)
     elif kind == "epq":
-        model = EPQ(**params, production_rate=200)
+        model = EPQ(**params, production_rate=demand * production_ratio)
     elif kind == "backorder":
-        model = BackorderEOQ(**params, shortage_cost=3)
+        model = BackorderEOQ(**params, shortage_cost=shortage)
     else:
         model = DiscountEOQ(**params, discount_rates={25.5: 0.02, 50: 0.1})
 
@@ -89,25 +178,25 @@ def test_eoq_optimum_against_independent_cost_surface(kind):
     # without using any production calculate_costs() or EOQ formulas.
     def cost(q, backlog_fraction=0.0):
         price = (
-            np.where(q >= 50, 9, np.where(q >= 25.5, 9.8, 10))
+            unit_price * np.where(q >= 50, 0.9, np.where(q >= 25.5, 0.98, 1))
             if kind == "discount"
-            else 10
+            else unit_price
         )
-        holding = price * 0.2
-        stock_fraction = 0.5 if kind == "epq" else 1.0
+        holding = price * holding_rate
+        stock_fraction = 1 - 1 / production_ratio if kind == "epq" else 1.0
         if kind == "backorder":
             stock_cost = holding * q * (1 - backlog_fraction) ** 2 / 2
-            stock_cost += 3 * q * backlog_fraction**2 / 2
+            stock_cost += shortage * q * backlog_fraction**2 / 2
         else:
             stock_cost = holding * q * stock_fraction / 2
-        return 100 * price + 500 / q + stock_cost
+        return demand * price + demand * setup / q + stock_cost
 
     result = model.solve()
     q = result.order_quantity
     fraction = result.max_backorder / q
     assert result.total_cost == pytest.approx(float(cost(q, fraction)))
     quantities = np.unique(
-        np.concatenate([np.linspace(0.1, 300, 20000), [25.5, 50, q]])
+        np.concatenate([np.geomspace(0.01, 100000, 20000), [25.5, 50, q]])
     )
     fractions = np.linspace(0, 1, 101) if kind == "backorder" else [0]
     grid_best = min(float(np.min(cost(quantities, b))) for b in fractions)
