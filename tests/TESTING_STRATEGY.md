@@ -118,3 +118,8 @@ shared contracts.
 `test_public_api.py` checks the public import namespace, saved-policy isolation,
 frozen result behavior, profile shape preservation, and agent serialization
 compatibility.
+
+The independent EOQ cost-surface test varies demand, price, setup, holding,
+production ratio and shortage costs separately, plus a combined scenario.
+This guards against accidentally hard-coded inputs. API agreement tests remain
+separate: agreement between two methods is not an independent correctness oracle.
